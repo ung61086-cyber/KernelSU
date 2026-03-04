@@ -1,0 +1,70 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+
+-- [[ CẤU HÌNH ]] --
+_G.Migul_PVP = {
+    EspLine = true, -- Đường kẻ từ đỉnh màn hình
+    EspBox = true,  -- Khung đỏ
+    HitboxSize = 20, -- Tầm đánh rộng
+    Aimbot = false
+}
+
+-- [[ HÀM VẼ ESP LINE & BOX ]] --
+local function CreateVisuals(target)
+    local Line = Drawing.new("Line")
+    local Box = Drawing.new("Square")
+    
+    RunService.RenderStepped:Connect(function()
+        if target.Character and target.Character:FindFirstChild("HumanoidRootPart") and target.Character.Humanoid.Health > 0 then
+            local Root = target.Character.HumanoidRootPart
+            local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
+            
+            if OnScreen then
+                -- 1. ESP Line (Đỉnh màn hình trỏ xuống)
+                if _G.Migul_PVP.EspLine then
+                    Line.Visible = true
+                    Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- Điểm bắt đầu
+                    Line.To = Vector2.new(Pos.X, Pos.Y) -- Điểm kết thúc
+                    Line.Color = Color3.fromRGB(0, 255, 255)
+                    Line.Thickness = 1
+                else Line.Visible = false end
+
+                -- 2. ESP Box
+                if _G.Migul_PVP.EspBox then
+                    Box.Visible = true
+                    Box.Size = Vector2.new(2000 / Pos.Z, 3000 / Pos.Z)
+                    Box.Position = Vector2.new(Pos.X - Box.Size.X / 2, Pos.Y - Box.Size.Y / 2)
+                    Box.Color = Color3.fromRGB(255, 0, 0)
+                    Box.Thickness = 1
+                else Box.Visible = false end
+            else
+                Line.Visible = false
+                Box.Visible = false
+            end
+        else
+            Line.Visible = false
+            Box.Visible = false
+        end
+    end)
+end
+
+-- [[ TỰ ĐỘNG ÁP DỤNG ]] --
+for _, v in pairs(Players:GetPlayers()) do
+    if v ~= player then CreateVisuals(v) end
+end
+Players.PlayerAdded:Connect(function(v) if v ~= player then CreateVisuals(v) end end)
+
+-- [[ HỆ THỐNG HITBOX PVP ]] --
+RunService.RenderStepped:Connect(function()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            -- Phóng to Hitbox để dễ bắn/chém trúng
+            local hrp = v.Character.HumanoidRootPart
+            hrp.Size = Vector3.new(_G.Migul_PVP.HitboxSize, _G.Migul_PVP.HitboxSize, _G.Migul_PVP.HitboxSize)
+            hrp.Transparency = 0.8
+            hrp.CanCollide = false
+        end
+    end
+end)
