@@ -1,0 +1,7 @@
+-- this script created at https://hoannhatz.github.io/ezscript
+getgenv().ScriptTitle = "fluorite"
+getgenv().ScriptSubTitle = "fluorite"
+getgenv().ScriptImage = "https://i.ibb.co/LhYMYB45/1000089464.webp"
+getgenv().ScriptAuthorName = "Tudeptrai"
+getgenv().ScriptAuthorSubTitle = "Ko có"
+loadstring(game:HttpGet("https://raw.githubusercontent.com/hoannhatz/Script/refs/heads/main/EZScript.lua"))()
