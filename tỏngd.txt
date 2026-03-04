@@ -1,4 +1,4 @@
--- [[ MIGUL V4  ]] --
+-- [[ MIGUL V4 - CLEAN & OPTIMIZED ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -13,7 +13,7 @@ _G.PVP_Settings = {
     TP_Offset = Vector3.new(0, 0, 3),
     FOV_Value = 70,
     AimCircle = false,
-    CircleRadius = 100
+    CircleRadius = 0 -- Bắt đầu từ 0 theo yêu cầu
 }
 
 -- [[ 1. KHỞI TẠO VÒNG TRÒN AIM (MÀU TRẮNG) ]] --
@@ -21,7 +21,7 @@ local AimCircle = Drawing.new("Circle")
 AimCircle.Color = Color3.fromRGB(255, 255, 255)
 AimCircle.Thickness = 1
 AimCircle.Filled = false
-AimCircle.Transparency = 1
+AimCircle.Transparency = 0.8
 AimCircle.Visible = false
 
 -- [[ 2. KHỞI TẠO GIAO DIỆN (UI) ]] --
@@ -36,7 +36,6 @@ mainFrame.BackgroundColor3 = Color3.fromRGB(15, 17, 24)
 mainFrame.Visible = false
 Instance.new("UICorner", mainFrame).CornerRadius = UDim.new(0, 12)
 
--- Label hiện số người (Server Info)
 local serverStats = Instance.new("TextLabel", mainFrame)
 serverStats.Size = UDim2.new(1, 0, 0, 30)
 serverStats.Position = UDim2.new(0, 0, 0, 10)
@@ -62,8 +61,7 @@ openBtn.TextColor3 = Color3.new(1, 1, 1)
 openBtn.Font = Enum.Font.GothamBold
 openBtn.TextSize = 10
 Instance.new("UICorner", openBtn).CornerRadius = UDim.new(1, 0)
-openBtn.Active = true
-openBtn.Draggable = true -- Có thể kéo nút trên điện thoại
+openBtn.Draggable = true
 
 openBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = not mainFrame.Visible
@@ -91,7 +89,6 @@ end
 
 -- [[ 5. LOGIC CHỨC NĂNG TỔNG HỢP ]] --
 
--- Cập nhật Server Info
 local function UpdateStats()
     serverStats.Text = "SERVER: " .. #Players:GetPlayers() .. "/" .. Players.MaxPlayers .. " Players"
 end
@@ -118,13 +115,12 @@ end
 for _, v in pairs(Players:GetPlayers()) do if v ~= player then CreateESPLine(v) end end
 Players.PlayerAdded:Connect(function(v) if v ~= player then CreateESPLine(v) end end)
 
--- Hitbox, TP, FOV & Aim Circle
+-- VÒNG LẶP CHÍNH (Hitbox, TP, FOV, Circle)
 RunService.RenderStepped:Connect(function()
-    -- Cập nhật FOV
     Camera.FieldOfView = _G.PVP_Settings.FOV_Value
 
-    -- Cập nhật Aim Circle
-    if _G.PVP_Settings.AimCircle then
+    -- Logic Vòng Tròn Aim (0-100)
+    if _G.PVP_Settings.AimCircle and _G.PVP_Settings.CircleRadius > 0 then
         AimCircle.Visible = true
         AimCircle.Radius = _G.PVP_Settings.CircleRadius
         AimCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -132,24 +128,20 @@ RunService.RenderStepped:Connect(function()
         AimCircle.Visible = false
     end
 
-    -- Logic Người chơi khác
     local target, dist = nil, math.huge
     for _, v in pairs(Players:GetPlayers()) do
         if v ~= player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") and v.Character.Humanoid.Health > 0 then
-            -- Hitbox
             if _G.PVP_Settings.HitboxEnabled then
                 local hrp = v.Character.HumanoidRootPart
                 hrp.Size = Vector3.new(_G.PVP_Settings.HitboxSize, _G.PVP_Settings.HitboxSize, _G.PVP_Settings.HitboxSize)
                 hrp.Transparency = 0.7
                 hrp.CanCollide = false
             end
-            -- Tìm mục tiêu gần nhất
             local d = (player.Character.HumanoidRootPart.Position - v.Character.HumanoidRootPart.Position).Magnitude
             if d < dist then dist = d; target = v end
         end
     end
 
-    -- TP Kill
     if _G.PVP_Settings.TP_Kill and target then
         player.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(_G.PVP_Settings.TP_Offset)
     end
@@ -184,4 +176,17 @@ CreateToggle("ESP Line (Top)", function(s) _G.PVP_Settings.EspLine = s end)
 CreateToggle("Hitbox Pro (Big)", function(s) _G.PVP_Settings.HitboxEnabled = s end)
 CreateToggle("TP Kill (Tốc Biến)", function(s) _G.PVP_Settings.TP_Kill = s end)
 CreateToggle("High FOV (Tầm nhìn)", function(s) _G.PVP_Settings.FOV_Value = s and 110 or 70 end)
-CreateToggle("Aim Circle (Trắng)", function(s) _G.PVP_Settings.AimCircle = s end)
+
+-- Nút Chỉnh Vòng Aim 0-100 (Bấm để tăng cỡ)
+CreateToggle("Chỉnh Vòng Aim (0-100)", function(state)
+    _G.PVP_Settings.AimCircle = state
+    if state then
+        if _G.PVP_Settings.CircleRadius >= 100 then
+            _G.PVP_Settings.CircleRadius = 0
+        else
+            _G.PVP_Settings.CircleRadius = _G.PVP_Settings.CircleRadius + 25 -- Mỗi lần bấm tăng 25
+        end
+    else
+        _G.PVP_Settings.CircleRadius = 0
+    end
+end)
