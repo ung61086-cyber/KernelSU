@@ -1,56 +1,91 @@
--- [[ 1. HỆ THỐNG KEY & DỮ LIỆU ]] --
+-- [[ 1. KHỞI TẠO SERVICES & BIẾN HỆ THỐNG ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
+-- [[ 2. CẤU HÌNH KEY & MOD ]] --
 local Keys = {
     ["tudeptrai2013"] = 863913600, -- VIP 9999 Ngày
-    ["Tudeptrai"] = 86400, ["Tudeptrai09"] = 86400, 
-    ["Tudeptrai10"] = 86400, ["Tudeptrai33"] = 86400, 
-    ["Tudeptrai88"] = 86400, ["Tudeptrai98"] = 86400
+    ["Tudeptrai"] = 86400, ["Tudeptrai09"] = 86400, ["Tudeptrai10"] = 86400,
+    ["Tudeptrai33"] = 86400, ["Tudeptrai88"] = 86400, ["Tudeptrai98"] = 86400
 }
 
 _G.Config = {
-    Aimbot = false, ESP_Box = false, ESP_Line = false, 
-    ESP_HP = false, TeamCheck = true, AimRadius = 93.61
+    Aimbot = false, Hitbox = false, AimRadius = 93.61,
+    ESP_Box = false, ESP_Line = false, ESP_HP = false, TeamCheck = true
 }
 
 local Cache = {Lines = {}, Boxes = {}, HealthBars = {}}
 
--- [[ 2. GIAO DIỆN NHẬP KEY (KEY SYSTEM) ]] --
+-- [[ 3. GIAO DIỆN NHẬP KEY ]] --
 local KeyGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
 local MainKey = Instance.new("Frame", KeyGui)
 MainKey.Size = UDim2.new(0, 320, 0, 180)
 MainKey.Position = UDim2.new(0.5, -160, 0.5, -90)
 MainKey.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Instance.new("UICorner", MainKey)
+Instance.new("UICorner", MainKey).CornerRadius = UDim.new(0, 15)
 
 local Title = Instance.new("TextLabel", MainKey)
 Title.Size = UDim2.new(1, 0, 0, 50); Title.Text = "NHẬP KEY"; Title.Font = "GothamBold"; Title.TextSize = 20; Title.BackgroundTransparency = 1
 
 local TextBox = Instance.new("TextBox", MainKey)
-TextBox.Size = UDim2.new(0, 260, 0, 40); TextBox.Position = UDim2.new(0.5, -130, 0.4, 0); TextBox.PlaceholderText = "Nhập Key tại đây..."; TextBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-Instance.new("UICorner", TextBox)
+TextBox.Size = UDim2.new(0, 260, 0, 40); TextBox.Position = UDim2.new(0.5, -130, 0.4, 0); TextBox.PlaceholderText = "Nhập Key tại đây..."; TextBox.Text = ""; TextBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 8)
 
 local CheckBtn = Instance.new("TextButton", MainKey)
-CheckBtn.Size = UDim2.new(0, 180, 0, 40); CheckBtn.Position = UDim2.new(0.5, -90, 0.72, 0); CheckBtn.Text = "XÁC NHẬN"; CheckBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100); CheckBtn.TextColor3 = Color3.new(1,1,1); CheckBtn.Font = "GothamBold"
-Instance.new("UICorner", CheckBtn)
+CheckBtn.Size = UDim2.new(0, 180, 0, 40); CheckBtn.Position = UDim2.new(0.5, -90, 0.72, 0); CheckBtn.Text = "XÁC NHẬN"; CheckBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100); CheckBtn.TextColor3 = Color3.new(1, 1, 1); CheckBtn.Font = "GothamBold"
+Instance.new("UICorner", CheckBtn).CornerRadius = UDim.new(0, 8)
 
 local InfoLabel = Instance.new("TextLabel", MainKey)
-InfoLabel.Size = UDim2.new(1, 0, 0, 20); InfoLabel.Position = UDim2.new(0, 0, 0.9, 0); InfoLabel.Text = ""; InfoLabel.BackgroundTransparency = 1
+InfoLabel.Size = UDim2.new(1, 0, 0, 20); InfoLabel.Position = UDim2.new(0, 0, 0.9, 0); InfoLabel.Text = ""; InfoLabel.BackgroundTransparency = 1; InfoLabel.TextSize = 12
 
--- [[ 3. HÀM ESP & LOGIC ]] --
+-- [[ 4. HÀM TẠO ESP (DRAWING API) ]] --
 local function CreateESP(v)
-    local l = Drawing.new("Line"); l.Color = Color3.new(1,1,1); Cache.Lines[v.Name] = l
+    local l = Drawing.new("Line"); l.Visible = false; l.Transparency = 1; l.Thickness = 1; l.Color = Color3.new(1,1,1); Cache.Lines[v.Name] = l
     local b = {T = Drawing.new("Line"), B = Drawing.new("Line"), L = Drawing.new("Line"), R = Drawing.new("Line")}
-    for _, i in pairs(b) do i.Color = Color3.new(1,1,1) end; Cache.Boxes[v.Name] = b
+    for _, i in pairs(b) do i.Visible = false; i.Thickness = 1.5; i.Color = Color3.new(1,1,1) end; Cache.Boxes[v.Name] = b
     local h = {Out = Drawing.new("Square"), Main = Drawing.new("Square")}
-    h.Out.Filled = true; h.Out.Color = Color3.new(0,0,0); h.Main.Filled = true; Cache.HealthBars[v.Name] = h
+    h.Out.Visible = false; h.Out.Filled = true; h.Out.Color = Color3.new(0,0,0); h.Main.Visible = false; h.Main.Filled = true; Cache.HealthBars[v.Name] = h
 end
 
-local function StartMod()
+-- [[ 5. GIAO DIỆN MOD MENU (BLOX FRUIT MAX) ]] --
+local function CreateMenu()
+    local MenuGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+    local MainFrame = Instance.new("Frame", MenuGui)
+    MainFrame.Size = UDim2.new(0, 300, 0, 400); MainFrame.Position = UDim2.new(0.5, -150, 0.5, -200); MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    
+    local Header = Instance.new("Frame", MainFrame)
+    Header.Size = UDim2.new(1, 0, 0, 45); Header.BackgroundColor3 = Color3.fromRGB(210, 40, 40)
+    local Title = Instance.new("TextLabel", Header)
+    Title.Size = UDim2.new(1, 0, 1, 0); Title.Text = "BLOX FRUIT MAX"; Title.TextColor3 = Color3.new(1,1,1); Title.Font = "GothamBold"; Title.BackgroundTransparency = 1
+
+    local function AddBtn(name, configKey, pos)
+        local btn = Instance.new("TextButton", MainFrame)
+        btn.Size = UDim2.new(1, 0, 0, 45); btn.Position = pos; btn.Text = name; btn.BackgroundColor3 = Color3.fromRGB(70, 70, 70); btn.TextColor3 = Color3.new(1,1,1); btn.Font = "GothamBold"
+        btn.MouseButton1Click:Connect(function()
+            _G.Config[configKey] = not _G.Config[configKey]
+            btn.TextColor3 = _G.Config[configKey] and Color3.new(0, 1, 0) or Color3.new(1, 1, 1)
+        end)
+    end
+
+    AddBtn("AIMBOT", "Aimbot", UDim2.new(0, 0, 0, 45))
+    AddBtn("HITBOX", "Hitbox", UDim2.new(0, 0, 0, 90))
+    AddBtn("ESP LINE", "ESP_Line", UDim2.new(0, 0, 0, 195))
+    AddBtn("ESP BOX", "ESP_Box", UDim2.new(0, 0, 0, 240))
+    AddBtn("ESP HP", "ESP_HP", UDim2.new(0, 0, 0, 285))
+    
+    -- Draggable Menu
+    local dragging, dragStart, startPos
+    MainFrame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; dragStart = i.Position; startPos = MainFrame.Position end end)
+    UserInputService.InputChanged:Connect(function(i) if dragging and i.UserInputType == Enum.UserInputType.MouseMovement then local d = i.Position - dragStart; MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) end end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end end)
+end
+
+-- [[ 6. VÒNG LẶP CẬP NHẬT (RENDERSTEPPED) ]] --
+local function StartScript()
+    CreateMenu()
     RunService.RenderStepped:Connect(function()
         for _, v in pairs(Players:GetPlayers()) do
             if v == LocalPlayer then continue end
@@ -66,7 +101,6 @@ local function StartMod()
                     local sizeX, sizeY = 2000/pos.Z, 3000/pos.Z
                     local x, y = pos.X - sizeX/2, pos.Y - sizeY/2
                     
-                    -- Vẽ Box & Line & HP
                     Cache.Lines[v.Name].Visible = _G.Config.ESP_Line
                     Cache.Lines[v.Name].From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y); Cache.Lines[v.Name].To = Vector2.new(pos.X, pos.Y)
                     
@@ -89,16 +123,21 @@ local function StartMod()
     end)
 end
 
--- [[ 4. XỬ LÝ CLICK XÁC NHẬN ]] --
+-- [[ 7. KẾT NỐI NÚT XÁC NHẬN KEY ]] --
 CheckBtn.MouseButton1Click:Connect(function()
     local key = TextBox.Text
     if Keys[key] then
         local start = os.time()
         InfoLabel.TextColor3 = Color3.fromRGB(0, 200, 0); InfoLabel.Text = "KEY ĐÚNG! ĐANG MỞ..."
         task.wait(1); KeyGui:Destroy()
-        StartMod() -- Kích hoạt Mod
-        -- Sau đây bạn có thể thêm code Menu Blox Fruit Max để bật/tắt các Config
+        StartScript()
+        
+        task.spawn(function()
+            while task.wait(60) do
+                if os.time() - start >= Keys[key] then LocalPlayer:Kick("Key hết hạn!") break end
+            end
+        end)
     else
-        InfoLabel.TextColor3 = Color3.fromRGB(255, 0, 0); InfoLabel.Text = "SAI KEY!"
+        InfoLabel.TextColor3 = Color3.fromRGB(255, 0, 0); InfoLabel.Text = "KEY SAI HOẶC HẾT HẠN!"
     end
 end)
