@@ -1,181 +1,104 @@
--- [[ SERVICES ]] --
+-- [[ 1. HỆ THỐNG KEY & DỮ LIỆU ]] --
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- [[ CẤU HÌNH HỆ THỐNG ]] --
-_G.Config = {
-    ESP_Master = true,
-    ESP_Box = true,
-    ESP_Line = true,
-    ESP_HP = true,
-    TeamCheck = true,
-    AimRadius = 93.61, -- Thông số từ video
-}
-
-local Cache = { Lines = {}, Boxes = {}, HealthBars = {} }
 local Keys = {
-    ["tudeptrai2013"] = 863913600, -- VIP 9999 ngày
-    ["Tudeptrai"] = 86400,
-    ["Tudeptrai09"] = 86400,
-    ["Tudeptrai10"] = 86400, -- Thêm key mới
-    ["Tudeptrai33"] = 86400,
-    ["Tudeptrai88"] = 86400,
-    ["Tudeptrai98"] = 86400
+    ["tudeptrai2013"] = 863913600, -- VIP 9999 Ngày
+    ["Tudeptrai"] = 86400, ["Tudeptrai09"] = 86400, 
+    ["Tudeptrai10"] = 86400, ["Tudeptrai33"] = 86400, 
+    ["Tudeptrai88"] = 86400, ["Tudeptrai98"] = 86400
 }
 
--- [[ HÀM TẠO VẼ (DRAWING) ]] --
-local function CreateESP(player)
-    if Cache.Lines[player.Name] then return end -- Tránh tạo trùng
+_G.Config = {
+    Aimbot = false, ESP_Box = false, ESP_Line = false, 
+    ESP_HP = false, TeamCheck = true, AimRadius = 93.61
+}
 
-    local line = Drawing.new("Line")
-    line.Thickness = 1
-    line.Color = Color3.new(1, 1, 1)
-    line.Transparency = 1
-    Cache.Lines[player.Name] = line
+local Cache = {Lines = {}, Boxes = {}, HealthBars = {}}
 
-    local box = {
-        T = Drawing.new("Line"), B = Drawing.new("Line"), 
-        L = Drawing.new("Line"), R = Drawing.new("Line")
-    }
-    for _, l in pairs(box) do 
-        l.Thickness = 1.5
-        l.Color = Color3.new(1, 1, 1)
-        l.Visible = false
-    end
-    Cache.Boxes[player.Name] = box
+-- [[ 2. GIAO DIỆN NHẬP KEY (KEY SYSTEM) ]] --
+local KeyGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+local MainKey = Instance.new("Frame", KeyGui)
+MainKey.Size = UDim2.new(0, 320, 0, 180)
+MainKey.Position = UDim2.new(0.5, -160, 0.5, -90)
+MainKey.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Instance.new("UICorner", MainKey)
 
-    local hb = { Out = Drawing.new("Square"), Main = Drawing.new("Square") }
-    hb.Out.Filled = true
-    hb.Out.Color = Color3.fromRGB(0,0,0)
-    hb.Out.Transparency = 0.5
-    hb.Main.Filled = true
-    hb.Main.Transparency = 1
-    Cache.HealthBars[player.Name] = hb
+local Title = Instance.new("TextLabel", MainKey)
+Title.Size = UDim2.new(1, 0, 0, 50); Title.Text = "NHẬP KEY"; Title.Font = "GothamBold"; Title.TextSize = 20; Title.BackgroundTransparency = 1
+
+local TextBox = Instance.new("TextBox", MainKey)
+TextBox.Size = UDim2.new(0, 260, 0, 40); TextBox.Position = UDim2.new(0.5, -130, 0.4, 0); TextBox.PlaceholderText = "Nhập Key tại đây..."; TextBox.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+Instance.new("UICorner", TextBox)
+
+local CheckBtn = Instance.new("TextButton", MainKey)
+CheckBtn.Size = UDim2.new(0, 180, 0, 40); CheckBtn.Position = UDim2.new(0.5, -90, 0.72, 0); CheckBtn.Text = "XÁC NHẬN"; CheckBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 100); CheckBtn.TextColor3 = Color3.new(1,1,1); CheckBtn.Font = "GothamBold"
+Instance.new("UICorner", CheckBtn)
+
+local InfoLabel = Instance.new("TextLabel", MainKey)
+InfoLabel.Size = UDim2.new(1, 0, 0, 20); InfoLabel.Position = UDim2.new(0, 0, 0.9, 0); InfoLabel.Text = ""; InfoLabel.BackgroundTransparency = 1
+
+-- [[ 3. HÀM ESP & LOGIC ]] --
+local function CreateESP(v)
+    local l = Drawing.new("Line"); l.Color = Color3.new(1,1,1); Cache.Lines[v.Name] = l
+    local b = {T = Drawing.new("Line"), B = Drawing.new("Line"), L = Drawing.new("Line"), R = Drawing.new("Line")}
+    for _, i in pairs(b) do i.Color = Color3.new(1,1,1) end; Cache.Boxes[v.Name] = b
+    local h = {Out = Drawing.new("Square"), Main = Drawing.new("Square")}
+    h.Out.Filled = true; h.Out.Color = Color3.new(0,0,0); h.Main.Filled = true; Cache.HealthBars[v.Name] = h
 end
 
--- [[ HÀM DỌN DẸP KHI PLAYER THOÁT ]] --
-local function RemoveESP(playerName)
-    if Cache.Lines[playerName] then Cache.Lines[playerName]:Remove() end
-    if Cache.Boxes[playerName] then 
-        for _, l in pairs(Cache.Boxes[playerName]) do l:Remove() end 
-    end
-    if Cache.HealthBars[playerName] then
-        Cache.HealthBars[playerName].Out:Remove()
-        Cache.HealthBars[playerName].Main:Remove()
-    end
-    Cache.Lines[playerName] = nil
-    Cache.Boxes[playerName] = nil
-    Cache.HealthBars[playerName] = nil
-end
-
--- [[ LOGIC HIỂN THỊ ESP ]] --
-local function UpdateESP()
-    for _, v in pairs(Players:GetPlayers()) do
-        if v == LocalPlayer then continue end
-        
-        local char = v.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local hum = char and char:FindFirstChild("Humanoid")
-        
-        -- Tạo ESP nếu chưa có
-        if hrp and not Cache.Lines[v.Name] then CreateESP(v) end
-        
-        local canShow = _G.Config.ESP_Master and hrp and hum and hum.Health > 0
-        if _G.Config.TeamCheck and v.Team == LocalPlayer.Team then canShow = false end
-
-        local pos, onScreen = false, false
-        if canShow then
-            pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-        end
-
-        if onScreen and canShow then
-            local sizeX = 2000 / pos.Z
-            local sizeY = 3000 / pos.Z
-            local x, y = pos.X - sizeX/2, pos.Y - sizeY/2
-
-            -- Cập nhật Box
-            local b = Cache.Boxes[v.Name]
-            if b then
-                b.T.Visible = _G.Config.ESP_Box; b.T.From = Vector2.new(x, y); b.T.To = Vector2.new(x + sizeX, y)
-                b.B.Visible = _G.Config.ESP_Box; b.B.From = Vector2.new(x, y + sizeY); b.B.To = Vector2.new(x + sizeX, y + sizeY)
-                b.L.Visible = _G.Config.ESP_Box; b.L.From = Vector2.new(x, y); l.L.To = Vector2.new(x, y + sizeY)
-                b.R.Visible = _G.Config.ESP_Box; b.R.From = Vector2.new(x + sizeX, y); b.R.To = Vector2.new(x + sizeX, y + sizeY)
-            end
-
-            -- Cập nhật Line
-            if Cache.Lines[v.Name] then
-                Cache.Lines[v.Name].Visible = _G.Config.ESP_Line
-                Cache.Lines[v.Name].From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                Cache.Lines[v.Name].To = Vector2.new(pos.X, pos.Y)
-            end
-
-            -- Cập nhật Thanh Máu (HP Bar)
-            local h = Cache.HealthBars[v.Name]
-            if h then
-                local hpPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
-                h.Out.Visible = _G.Config.ESP_HP
-                h.Out.Size = Vector2.new(4, sizeY)
-                h.Out.Position = Vector2.new(x - 7, y)
+local function StartMod()
+    RunService.RenderStepped:Connect(function()
+        for _, v in pairs(Players:GetPlayers()) do
+            if v == LocalPlayer then continue end
+            local char = v.Character
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChild("Humanoid")
+            
+            if hrp and hum and hum.Health > 0 then
+                if not Cache.Lines[v.Name] then CreateESP(v) end
+                local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
                 
-                h.Main.Visible = _G.Config.ESP_HP
-                h.Main.Size = Vector2.new(2, sizeY * hpPct)
-                h.Main.Position = Vector2.new(x - 6, y + (sizeY * (1 - hpPct)))
-                h.Main.Color = Color3.fromHSV(hpPct * 0.3, 1, 1) -- Màu từ đỏ sang xanh
-            end
-        else
-            -- Ẩn đi khi không nhìn thấy
-            if Cache.Lines[v.Name] then Cache.Lines[v.Name].Visible = false end
-            if Cache.Boxes[v.Name] then
-                for _, l in pairs(Cache.Boxes[v.Name]) do l.Visible = false end
-            end
-            if Cache.HealthBars[v.Name] then
-                Cache.HealthBars[v.Name].Out.Visible = false
-                Cache.HealthBars[v.Name].Main.Visible = false
-            end
-        end
-    end
-end
-
--- Dọn dẹp bộ nhớ khi có người thoát
-Players.PlayerRemoving:Connect(function(player)
-    RemoveESP(player.Name)
-end)
-
--- [[ KHỞI CHẠY MENU CHÍNH ]] --
-_G.OpenModMenu = function()
-    warn("BLOX FRUIT MAX: SUCCESS!")
-    RunService.RenderStepped:Connect(UpdateESP)
-end
-
--- [[ GÁN SỰ KIỆN NÚT BẤM VÀO UI CỦA BẠN ]] --
--- Đảm bảo bạn đã định nghĩa CheckBtn và TextBox ở script UI trước đó
-if CheckBtn then
-    CheckBtn.MouseButton1Click:Connect(function()
-        local inputKey = TextBox.Text
-        if Keys[inputKey] then
-            local startTime = os.time() -- Tiến key ngay khi dùng
-            local maxDur = Keys[inputKey]
-            
-            InfoLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            InfoLabel.Text = (inputKey == "tudeptrai2013") and "KEY VIP: 9999 NGÀY!" or "KEY ĐÚNG: CÒN 24H!"
-            
-            task.wait(1)
-            KeyGui:Destroy()
-            _G.OpenModMenu()
-
-            task.spawn(function()
-                while task.wait(60) do
-                    if os.time() - startTime >= maxDur then
-                        LocalPlayer:Kick("Key hết hạn 24 giờ!")
-                        break
-                    end
+                if onScreen and not (_G.Config.TeamCheck and v.Team == LocalPlayer.Team) then
+                    local sizeX, sizeY = 2000/pos.Z, 3000/pos.Z
+                    local x, y = pos.X - sizeX/2, pos.Y - sizeY/2
+                    
+                    -- Vẽ Box & Line & HP
+                    Cache.Lines[v.Name].Visible = _G.Config.ESP_Line
+                    Cache.Lines[v.Name].From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y); Cache.Lines[v.Name].To = Vector2.new(pos.X, pos.Y)
+                    
+                    local b = Cache.Boxes[v.Name]
+                    b.T.Visible = _G.Config.ESP_Box; b.T.From = Vector2.new(x,y); b.T.To = Vector2.new(x+sizeX,y)
+                    b.B.Visible = _G.Config.ESP_Box; b.B.From = Vector2.new(x,y+sizeY); b.B.To = Vector2.new(x+sizeX,y+sizeY)
+                    b.L.Visible = _G.Config.ESP_Box; b.L.From = Vector2.new(x,y); b.L.To = Vector2.new(x,y+sizeY)
+                    b.R.Visible = _G.Config.ESP_Box; b.R.From = Vector2.new(x+sizeX,y); b.R.To = Vector2.new(x+sizeX,y+sizeY)
+                    
+                    local h = Cache.HealthBars[v.Name]
+                    h.Out.Visible = _G.Config.ESP_HP; h.Out.Size = Vector2.new(4, sizeY); h.Out.Position = Vector2.new(x-7, y)
+                    h.Main.Visible = _G.Config.ESP_HP; h.Main.Size = Vector2.new(2, sizeY * (hum.Health/hum.MaxHealth)); h.Main.Position = Vector2.new(x-6, y + (sizeY * (1 - hum.Health/hum.MaxHealth))); h.Main.Color = Color3.fromHSV((hum.Health/hum.MaxHealth)*0.3, 1, 1)
+                else
+                    Cache.Lines[v.Name].Visible = false
+                    for _, i in pairs(Cache.Boxes[v.Name]) do i.Visible = false end
+                    Cache.HealthBars[v.Name].Out.Visible = false; Cache.HealthBars[v.Name].Main.Visible = false
                 end
-            end)
-        else
-            InfoLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-            InfoLabel.Text = "KEY SAI HOẶC HẾT HẠN!"
+            end
         end
     end)
 end
+
+-- [[ 4. XỬ LÝ CLICK XÁC NHẬN ]] --
+CheckBtn.MouseButton1Click:Connect(function()
+    local key = TextBox.Text
+    if Keys[key] then
+        local start = os.time()
+        InfoLabel.TextColor3 = Color3.fromRGB(0, 200, 0); InfoLabel.Text = "KEY ĐÚNG! ĐANG MỞ..."
+        task.wait(1); KeyGui:Destroy()
+        StartMod() -- Kích hoạt Mod
+        -- Sau đây bạn có thể thêm code Menu Blox Fruit Max để bật/tắt các Config
+    else
+        InfoLabel.TextColor3 = Color3.fromRGB(255, 0, 0); InfoLabel.Text = "SAI KEY!"
+    end
+end)
