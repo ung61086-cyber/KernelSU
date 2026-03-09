@@ -1,0 +1,128 @@
+-- [[ SERVICES ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- [[ CẤU HÌNH HỆ THỐNG ]] --
+_G.Config = {
+    ESP_Master = true,
+    ESP_Box = true,
+    ESP_Line = true,
+    ESP_HP = true,
+    Aimbot = false,
+    Hitbox = false,
+    TeamCheck = true,
+    AimRadius = 93.61,
+    Sensitivity = 0.2,
+    HitboxSize = 15
+}
+
+local Cache = { Lines = {}, Boxes = {}, HealthBars = {} }
+
+-- [[ HÀM TẠO VẼ (DRAWING) ]] --
+local function CreateESP(player)
+    -- Tạo Line
+    local line = Drawing.new("Line")
+    line.Thickness = 1
+    line.Color = Color3.new(1, 1, 1)
+    line.Transparency = 0.7
+    Cache.Lines[player.Name] = line
+
+    -- Tạo Box (4 lines)
+    local box = {
+        T = Drawing.new("Line"), B = Drawing.new("Line"), 
+        L = Drawing.new("Line"), R = Drawing.new("Line")
+    }
+    for _, l in pairs(box) do 
+        l.Thickness = 1.5
+        l.Color = Color3.new(1, 1, 1)
+        l.Visible = false 
+    end
+    Cache.Boxes[player.Name] = box
+
+    -- Tạo Health Bar
+    local hb = {
+        Out = Drawing.new("Square"),
+        Main = Drawing.new("Square")
+    }
+    hb.Out.Filled = true
+    hb.Out.Color = Color3.new(0,0,0)
+    hb.Main.Filled = true
+    Cache.HealthBars[player.Name] = hb
+end
+
+-- [[ VÒNG LẶP CHÍNH (RENDER) ]] --
+RunService.RenderStepped:Connect(function()
+    local ScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+
+    for _, v in pairs(Players:GetPlayers()) do
+        if v == LocalPlayer then continue end
+        
+        -- Dọn dẹp/Khởi tạo
+        if not Cache.Lines[v.Name] then CreateESP(v) end
+        
+        local char = v.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+        
+        -- Điều kiện hiển thị
+        local canShow = _G.Config.ESP_Master and hrp and hum and hum.Health > 0
+        if _G.Config.TeamCheck and v.Team == LocalPlayer.Team then canShow = false end
+
+        local pos, onScreen = false, false
+        if canShow then
+            pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+        end
+
+        if onScreen then
+            local sizeX = 2000 / pos.Z
+            local sizeY = 3000 / pos.Z
+            local x, y = pos.X - sizeX/2, pos.Y - sizeY/2
+
+            -- Cập nhật Box
+            local b = Cache.Boxes[v.Name]
+            b.T.Visible = _G.Config.ESP_Box
+            b.T.From = Vector2.new(x, y)
+            b.T.To = Vector2.new(x + sizeX, y)
+            -- (Tương tự cho các cạnh khác để tiết kiệm dòng code ở đây...)
+            b.B.Visible = _G.Config.ESP_Box; b.B.From = Vector2.new(x, y + sizeY); b.B.To = Vector2.new(x + sizeX, y + sizeY)
+            b.L.Visible = _G.Config.ESP_Box; b.L.From = Vector2.new(x, y); b.L.To = Vector2.new(x, y + sizeY)
+            b.R.Visible = _G.Config.ESP_Box; b.R.From = Vector2.new(x + sizeX, y); b.R.To = Vector2.new(x + sizeX, y + sizeY)
+
+            -- Cập nhật Line
+            local l = Cache.Lines[v.Name]
+            l.Visible = _G.Config.ESP_Line
+            l.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
+            l.To = Vector2.new(pos.X, pos.Y)
+
+            -- Cập nhật Health
+            local h = Cache.HealthBars[v.Name]
+            local hpPct = hum.Health / hum.MaxHealth
+            h.Out.Visible = _G.Config.ESP_HP
+            h.Out.Size = Vector2.new(4, sizeY)
+            h.Out.Position = Vector2.new(x - 7, y)
+            h.Main.Visible = _G.Config.ESP_HP
+            h.Main.Size = Vector2.new(2, sizeY * hpPct)
+            h.Main.Position = Vector2.new(x - 6, y + (sizeY * (1 - hpPct)))
+            h.Main.Color = Color3.fromHSV(hpPct * 0.3, 1, 1)
+        else
+            -- Ẩn khi không nhìn thấy
+            Cache.Lines[v.Name].Visible = false
+            for _, l in pairs(Cache.Boxes[v.Name]) do l.Visible = false end
+            Cache.HealthBars[v.Name].Out.Visible = false
+            Cache.HealthBars[v.Name].Main.Visible = false
+        end
+    end
+end)
+
+-- [[ DỌN DẸP ]] --
+Players.PlayerRemoving:Connect(function(v)
+    if Cache.Lines[v.Name] then
+        Cache.Lines[v.Name]:Remove()
+        for _, l in pairs(Cache.Boxes[v.Name]) do l:Remove() end
+        Cache.HealthBars[v.Name].Out:Remove()
+        Cache.HealthBars[v.Name].Main:Remove()
+    end
+end)
