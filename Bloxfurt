@@ -1,0 +1,148 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- [[ CẤU HÌNH BIẾN TOÀN CỤC ]] --
+_G.AimbotEnabled = false
+_G.AimRadius = 300
+_G.AimPart = "Head"
+_G.ESP_Box = false
+
+-- 1. VẼ VÒNG TRÒN FOV (AIM RADIUS)
+local AimFOVCircle = Drawing.new("Circle")
+AimFOVCircle.Color = Color3.fromRGB(0, 255, 0)
+AimFOVCircle.Thickness = 1.5
+AimFOVCircle.Visible = false
+AimFOVCircle.Radius = _G.AimRadius
+AimFOVCircle.Transparency = 1
+
+-- 2. TẠO CỬA SỔ GIAO DIỆN
+local Window = Rayfield:CreateWindow({
+   Name = "FREE FIRE MAX | FLUORITE",
+   LoadingTitle = "🚀 Đang khởi chạy hệ thống...",
+   LoadingSubtitle = "by Tudeptrai",
+   ConfigurationSaving = { Enabled = false },
+   KeySystem = false 
+})
+
+local MainTab = Window:CreateTab("MOD MENU", 4483362458)
+
+-- 3. NÚT ẨN/HIỆN HÌNH TÂM NGẮM (GIỐNG ẢNH)
+local ScreenGui = Instance.new("ScreenGui", game.Players.LocalPlayer:WaitForChild("PlayerGui"))
+ScreenGui.Name = "CustomMenuIcon"
+
+local OpenBtn = Instance.new("ImageButton", ScreenGui)
+OpenBtn.Size = UDim2.new(0, 50, 0, 50)
+OpenBtn.Position = UDim2.new(0, 10, 0.5, -25)
+OpenBtn.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+OpenBtn.BackgroundTransparency = 0.4
+OpenBtn.Image = "rbxassetid://6031763447" -- ID hình Tâm Ngắm
+OpenBtn.Visible = true
+OpenBtn.Active = true
+OpenBtn.Draggable = true 
+
+Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1, 0)
+local Stroke = Instance.new("UIStroke", OpenBtn)
+Stroke.Thickness = 1.5
+Stroke.Color = Color3.fromRGB(255, 255, 255)
+
+OpenBtn.MouseButton1Click:Connect(function()
+    game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+    -- Hiệu ứng nháy đỏ khi bấm
+    OpenBtn.ImageColor3 = Color3.fromRGB(255, 0, 0)
+    task.wait(0.1)
+    OpenBtn.ImageColor3 = Color3.fromRGB(255, 255, 255)
+end)
+
+-- 4. CÁC CHỨC NĂNG TRONG MENU
+MainTab:CreateSection("GIAO DIỆN")
+MainTab:CreateKeybind({
+   Name = "Phím Tắt Ẩn/Hiện",
+   CurrentKeybind = "RightControl",
+   HoldToInteract = false,
+   Callback = function() end,
+})
+
+MainTab:CreateToggle({
+   Name = "Hiện Nút Tâm Ngắm (Mở Menu)",
+   CurrentValue = true,
+   Callback = function(Value) OpenBtn.Visible = Value end,
+})
+
+MainTab:CreateSection("TARGET SETTINGS")
+MainTab:CreateToggle({
+   Name = "AIMBOT (AUTO LOCK)",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.AimbotEnabled = Value
+       AimFOVCircle.Visible = Value
+   end,
+})
+
+MainTab:CreateSlider({
+   Name = "FOV RADIUS",
+   Min = 50, Max = 800, CurrentValue = 300,
+   Callback = function(Value)
+       _G.AimRadius = Value
+       AimFOVCircle.Radius = Value
+   end,
+})
+
+MainTab:CreateSection("VISUALS (ESP)")
+MainTab:CreateToggle({
+   Name = "ESP BOX (KHUNG ĐỎ)",
+   CurrentValue = false,
+   Callback = function(Value)
+       _G.ESP_Box = Value
+       if not Value then
+           for _, v in pairs(game.Players:GetPlayers()) do
+               if v.Character and v.Character:FindFirstChild("ESP_Highlight") then
+                   v.Character.ESP_Highlight:Destroy()
+               end
+           end
+       end
+   end,
+})
+
+-- 5. VÒNG LẶP HỆ THỐNG (RENDER STEPPED)
+game:GetService("RunService").RenderStepped:Connect(function()
+    local mouseLocation = game:GetService("UserInputService"):GetMouseLocation()
+    AimFOVCircle.Position = Vector2.new(mouseLocation.X, mouseLocation.Y)
+    
+    -- Xử lý ESP BOX
+    if _G.ESP_Box then
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                if not v.Character:FindFirstChild("ESP_Highlight") then
+                    local hl = Instance.new("Highlight", v.Character)
+                    hl.Name = "ESP_Highlight"
+                    hl.FillColor = Color3.fromRGB(255, 0, 0)
+                    hl.FillTransparency = 0.5
+                    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                end
+            end
+        end
+    end
+
+    -- Xử lý AIMBOT
+    if _G.AimbotEnabled then
+        local target = nil
+        local shortestDist = _G.AimRadius
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild(_G.AimPart) then
+                local hum = v.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    local pos, onScreen = workspace.CurrentCamera:WorldToViewportPoint(v.Character[_G.AimPart].Position)
+                    if onScreen then
+                        local dist = (Vector2.new(pos.X, pos.Y) - AimFOVCircle.Position).Magnitude
+                        if dist < shortestDist then
+                            target = v.Character[_G.AimPart]
+                            shortestDist = dist
+                        end
+                    end
+                end
+            end
+        end
+        if target then
+            workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Position)
+        end
+    end
+end)
