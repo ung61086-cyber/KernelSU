@@ -1,0 +1,134 @@
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Player = game.Players.LocalPlayer
+local Mouse = Player:GetMouse()
+local Camera = workspace.CurrentCamera
+
+-- [[ CẤU HÌNH ]] --
+_G.Aimbot = false
+_G.Radius = 87.32
+_G.ESP = false
+
+-- 1. TẠO VÒNG TRÒN FOV (MÀU XANH LÁ NHƯ ẢNH 2)
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5
+FOVCircle.Color = Color3.fromRGB(0, 255, 0)
+FOVCircle.Transparency = 0.7
+FOVCircle.Filled = false
+FOVCircle.Visible = false
+
+-- 2. GIAO DIỆN (GUI)
+local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
+ScreenGui.ResetOnSpawn = false
+
+-- Khung Menu Chính
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UDim2.new(0, 260, 0, 320)
+MainFrame.Position = UDim2.new(0.5, -130, 0.5, -160)
+MainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MainFrame.BorderSizePixel = 0
+MainFrame.Visible = true
+
+local UICorner = Instance.new("UICorner", MainFrame)
+UICorner.CornerRadius = UDim.new(0, 4)
+
+-- Header Đỏ
+local Header = Instance.new("Frame", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 35)
+Header.BackgroundColor3 = Color3.fromRGB(200, 45, 45)
+Header.BorderSizePixel = 0
+
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.Text = "BLOX FRUIT MAX"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.BackgroundTransparency = 1
+
+-- Nút ẩn hiện (Icon Ninja)
+local ToggleIcon = Instance.new("ImageButton", ScreenGui)
+ToggleIcon.Size = UDim2.new(0, 50, 0, 50)
+ToggleIcon.Position = UDim2.new(0.6, 0, 0.2, 0)
+ToggleIcon.Image = "rbxassetid://6031763447" -- Bạn có thể thay ID ảnh Ninja vào đây
+ToggleIcon.BackgroundTransparency = 0.3
+ToggleIcon.BackgroundColor3 = Color3.new(0,0,0)
+ToggleIcon.Draggable = true
+
+-- Hàm tạo các dòng chức năng
+local function CreateButton(name, order)
+    local btn = Instance.new("TextButton", MainFrame)
+    btn.Size = UDim2.new(1, 0, 0, 40)
+    btn.Position = UDim2.new(0, 0, 0, 35 + (order * 40))
+    btn.BackgroundColor3 = Color3.fromRGB(65, 65, 65)
+    btn.BorderSizePixel = 1
+    btn.BorderColor3 = Color3.fromRGB(40, 40, 40)
+    btn.Text = name
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 13
+    return btn
+end
+
+-- 3. CÁC NÚT CHỨC NĂNG
+local AimBtn = CreateButton("AIMBOT", 0)
+local HitBtn = CreateButton("HITBOX", 1)
+
+-- Thanh Slider Radius (Màu xanh Blue như ảnh)
+local Slider = Instance.new("Frame", MainFrame)
+Slider.Size = UDim2.new(1, 0, 0, 50)
+Slider.Position = UDim2.new(0, 0, 0, 115)
+Slider.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
+Slider.BorderSizePixel = 0
+
+local SliderText = Instance.new("TextLabel", Slider)
+SliderText.Size = UDim2.new(1, 0, 1, 0)
+SliderText.Text = "AIM RADIUS: " .. _G.Radius
+SliderText.TextColor3 = Color3.new(1, 1, 1)
+SliderText.BackgroundTransparency = 1
+
+local ESPBoxBtn = CreateButton("ESP BOX", 3)
+local ESPHPBtn = CreateButton("ESP HP", 4)
+
+-- 4. XỬ LÝ LOGIC
+AimBtn.MouseButton1Click:Connect(function()
+    _G.Aimbot = not _G.Aimbot
+    FOVCircle.Visible = _G.Aimbot
+    AimBtn.TextColor3 = _G.Aimbot and Color3.new(1, 1, 0) or Color3.new(1, 1, 1)
+end)
+
+ESPBoxBtn.MouseButton1Click:Connect(function()
+    _G.ESP = not _G.ESP
+    ESPBoxBtn.TextColor3 = _G.ESP and Color3.new(1, 1, 0) or Color3.new(1, 1, 1)
+end)
+
+ToggleIcon.MouseButton1Click:Connect(function()
+    MainFrame.Visible = not MainFrame.Visible
+end)
+
+-- 5. VÒNG LẶP HỆ THỐNG (AIMBOT & ESP)
+RunService.RenderStepped:Connect(function()
+    local Center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    FOVCircle.Position = Center
+    FOVCircle.Radius = _G.Radius
+
+    if _G.Aimbot then
+        local target = nil
+        local dist = _G.Radius
+        for _, v in pairs(game.Players:GetPlayers()) do
+            if v ~= Player and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                local pos, screen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                if screen then
+                    local magnitude = (Vector2.new(pos.X, pos.Y) - Center).Magnitude
+                    if magnitude < dist then
+                        target = v.Character.HumanoidRootPart
+                        dist = magnitude
+                    end
+                end
+            end
+        end
+        if target then
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, target.Position)
+        end
+    end
+end)
