@@ -11,26 +11,28 @@ _G.Config = {
     ESP_Box = true,
     ESP_Line = true,
     ESP_HP = true,
-    Aimbot = false,
-    Hitbox = false,
     TeamCheck = true,
     AimRadius = 93.61,
-    Sensitivity = 0.2,
-    HitboxSize = 15
 }
 
 local Cache = { Lines = {}, Boxes = {}, HealthBars = {} }
+local Keys = {
+    ["tudeptrai2013"] = 863913600, -- VIP
+    ["Tudeptrai"] = 86400,
+    ["Tudeptrai09"] = 86400,
+    ["Tudeptrai33"] = 86400,
+    ["Tudeptrai88"] = 86400,
+    ["Tudeptrai98"] = 86400
+}
 
 -- [[ HÀM TẠO VẼ (DRAWING) ]] --
 local function CreateESP(player)
-    -- Tạo Line
     local line = Drawing.new("Line")
     line.Thickness = 1
     line.Color = Color3.new(1, 1, 1)
     line.Transparency = 0.7
     Cache.Lines[player.Name] = line
 
-    -- Tạo Box (4 lines)
     local box = {
         T = Drawing.new("Line"), B = Drawing.new("Line"), 
         L = Drawing.new("Line"), R = Drawing.new("Line")
@@ -38,36 +40,26 @@ local function CreateESP(player)
     for _, l in pairs(box) do 
         l.Thickness = 1.5
         l.Color = Color3.new(1, 1, 1)
-        l.Visible = false 
     end
     Cache.Boxes[player.Name] = box
 
-    -- Tạo Health Bar
-    local hb = {
-        Out = Drawing.new("Square"),
-        Main = Drawing.new("Square")
-    }
+    local hb = { Out = Drawing.new("Square"), Main = Drawing.new("Square") }
     hb.Out.Filled = true
     hb.Out.Color = Color3.new(0,0,0)
     hb.Main.Filled = true
     Cache.HealthBars[player.Name] = hb
 end
 
--- [[ VÒNG LẶP CHÍNH (RENDER) ]] --
-RunService.RenderStepped:Connect(function()
-    local ScreenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-
+-- [[ LOGIC HIỂN THỊ ESP ]] --
+local function UpdateESP()
     for _, v in pairs(Players:GetPlayers()) do
         if v == LocalPlayer then continue end
-        
-        -- Dọn dẹp/Khởi tạo
         if not Cache.Lines[v.Name] then CreateESP(v) end
         
         local char = v.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChild("Humanoid")
         
-        -- Điều kiện hiển thị
         local canShow = _G.Config.ESP_Master and hrp and hum and hum.Health > 0
         if _G.Config.TeamCheck and v.Team == LocalPlayer.Team then canShow = false end
 
@@ -83,23 +75,19 @@ RunService.RenderStepped:Connect(function()
 
             -- Cập nhật Box
             local b = Cache.Boxes[v.Name]
-            b.T.Visible = _G.Config.ESP_Box
-            b.T.From = Vector2.new(x, y)
-            b.T.To = Vector2.new(x + sizeX, y)
-            -- (Tương tự cho các cạnh khác để tiết kiệm dòng code ở đây...)
+            b.T.Visible = _G.Config.ESP_Box; b.T.From = Vector2.new(x, y); b.T.To = Vector2.new(x + sizeX, y)
             b.B.Visible = _G.Config.ESP_Box; b.B.From = Vector2.new(x, y + sizeY); b.B.To = Vector2.new(x + sizeX, y + sizeY)
             b.L.Visible = _G.Config.ESP_Box; b.L.From = Vector2.new(x, y); b.L.To = Vector2.new(x, y + sizeY)
             b.R.Visible = _G.Config.ESP_Box; b.R.From = Vector2.new(x + sizeX, y); b.R.To = Vector2.new(x + sizeX, y + sizeY)
 
             -- Cập nhật Line
-            local l = Cache.Lines[v.Name]
-            l.Visible = _G.Config.ESP_Line
-            l.From = Vector2.new(Camera.ViewportSize.X / 2, 0)
-            l.To = Vector2.new(pos.X, pos.Y)
+            Cache.Lines[v.Name].Visible = _G.Config.ESP_Line
+            Cache.Lines[v.Name].From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) -- Line từ dưới lên
+            Cache.Lines[v.Name].To = Vector2.new(pos.X, pos.Y)
 
             -- Cập nhật Health
             local h = Cache.HealthBars[v.Name]
-            local hpPct = hum.Health / hum.MaxHealth
+            local hpPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
             h.Out.Visible = _G.Config.ESP_HP
             h.Out.Size = Vector2.new(4, sizeY)
             h.Out.Position = Vector2.new(x - 7, y)
@@ -108,21 +96,47 @@ RunService.RenderStepped:Connect(function()
             h.Main.Position = Vector2.new(x - 6, y + (sizeY * (1 - hpPct)))
             h.Main.Color = Color3.fromHSV(hpPct * 0.3, 1, 1)
         else
-            -- Ẩn khi không nhìn thấy
             Cache.Lines[v.Name].Visible = false
             for _, l in pairs(Cache.Boxes[v.Name]) do l.Visible = false end
             Cache.HealthBars[v.Name].Out.Visible = false
             Cache.HealthBars[v.Name].Main.Visible = false
         end
     end
-end)
+end
 
--- [[ DỌN DẸP ]] --
-Players.PlayerRemoving:Connect(function(v)
-    if Cache.Lines[v.Name] then
-        Cache.Lines[v.Name]:Remove()
-        for _, l in pairs(Cache.Boxes[v.Name]) do l:Remove() end
-        Cache.HealthBars[v.Name].Out:Remove()
-        Cache.HealthBars[v.Name].Main:Remove()
+-- [[ KHỞI CHẠY MENU CHÍNH ]] --
+_G.OpenModMenu = function()
+    -- Thông báo Script đã kích hoạt
+    print("Blox Fruit Max Activated!")
+    RunService.RenderStepped:Connect(UpdateESP)
+end
+
+-- [[ HỆ THỐNG KIỂM TRA KEY ]] --
+-- Giả sử các UI CheckBtn, TextBox, InfoLabel, KeyGui đã được bạn tạo ở phần trước
+CheckBtn.MouseButton1Click:Connect(function()
+    local inputKey = TextBox.Text
+    
+    if Keys[inputKey] then
+        local maxDuration = Keys[inputKey]
+        local startTime = os.time()
+        
+        InfoLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+        InfoLabel.Text = (inputKey == "tudeptrai2013") and "KEY VIP ACTIVATED!" or "KEY ĐÚNG (24H)!"
+        
+        task.wait(1)
+        KeyGui:Destroy()
+        _G.OpenModMenu() -- Gọi hàm mở menu/esp ở trên
+
+        task.spawn(function()
+            while task.wait(60) do
+                if os.time() - startTime >= maxDuration then
+                    LocalPlayer:Kick("Key hết hạn!")
+                    break
+                end
+            end
+        end)
+    else
+        InfoLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        InfoLabel.Text = "SAI KEY!"
     end
 end)
