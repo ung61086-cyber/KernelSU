@@ -1,0 +1,160 @@
+-- [[ 1. HỆ THỐNG ENGINE TỐI ƯU & ANTI-LAG ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Tối ưu hóa FPS cực hạn (Khử lag)
+settings().Rendering.QualityLevel = 1
+for _, v in pairs(game:GetDescendants()) do
+    if v:IsA("BasePart") then v.CastShadow = false end
+    if v:IsA("Texture") or v:IsA("Decal") then v:Destroy() end
+end
+
+getgenv().Config = {
+    SilentAim = false,
+    Hitbox = false,
+    HitboxSize = 25,
+    ESP_Box = false,
+    ESP_Line = false,
+    ESP_Health = false,
+    Speed = 16
+}
+
+local KeyDatabase = {
+    ["tudeptrai2013"] = 863913600, -- VIP ADMIN
+    ["tuDepTrai"] = 86400,
+    ["tuDepTrai0"] = 86400,
+    ["tuDepTraiok"] = 86400
+}
+
+-- [[ 2. SIÊU SILENT AIM (Hệ thống bẻ đạn ngầm) ]] --
+local mt = getrawmetatable(game); setreadonly(mt, false)
+local oldNamecall = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+    if getgenv().Config.SilentAim and method == "FireServer" then
+        local Target = nil
+        local MouseDist = 1000 
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                local Hum = v.Character:FindFirstChildOfClass("Humanoid")
+                if Hum and Hum.Health > 0 then
+                    local Pos, OnScreen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                    if OnScreen then
+                        local Mag = (Vector2.new(Pos.X, Pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if Mag < MouseDist then Target = v; MouseDist = Mag end
+                    end
+                end
+            end
+        end
+        if Target then args[1] = Target.Character.HumanoidRootPart.Position return oldNamecall(self, unpack(args)) end
+    end
+    return oldNamecall(self, ...)
+end)
+setreadonly(mt, true)
+
+-- [[ 3. HỆ THỐNG ESP LAYOUT (BOX NGOÀI, MÁU TRÁI, LINE ĐỈNH) ]] --
+local function CreateESP(plr)
+    local function Update()
+        local Char = plr.Character
+        if not Char or not plr.Parent or plr == LocalPlayer then return end
+        local Root = Char:FindFirstChild("HumanoidRootPart")
+        local Hum = Char:FindFirstChildOfClass("Humanoid")
+        
+        -- ESP BOX (HÌNH VUÔNG BAO NGOÀI)
+        local BoxGui = Char:FindFirstChild("Fluorite_BoxGui")
+        if getgenv().Config.ESP_Box and Hum and Hum.Health > 0 and Root then
+            if not BoxGui then
+                BoxGui = Instance.new("BillboardGui", Char); BoxGui.Name = "Fluorite_BoxGui"
+                BoxGui.AlwaysOnTop = true; BoxGui.Size = UDim2.new(5, 0, 6.5, 0); BoxGui.Adornee = Root
+                local F = Instance.new("Frame", BoxGui); F.Size = UDim2.new(1, 0, 1, 0); F.BackgroundTransparency = 1
+                local S = Instance.new("UIStroke", F); S.Color = Color3.fromRGB(255, 0, 0); S.Thickness = 2
+            end
+        else if BoxGui then BoxGui:Destroy() end end
+
+        -- ESP MÁU (BÊN TAY TRÁI BOX)
+        local HP = Char:FindFirstChild("Fluorite_HP")
+        if getgenv().Config.ESP_Health and Hum and Hum.Health > 0 and Root then
+            if not HP then
+                HP = Instance.new("BillboardGui", Char); HP.Name = "Fluorite_HP"
+                HP.Size = UDim2.new(0.4, 0, 6, 0); HP.AlwaysOnTop = true; HP.Adornee = Root
+                HP.ExtentsOffset = Vector3.new(-3.5, 0, 0) -- Đẩy sang trái
+                local BG = Instance.new("Frame", HP); BG.Size = UDim2.new(1, 0, 1, 0); BG.BackgroundColor3 = Color3.new(0,0,0)
+                local Bar = Instance.new("Frame", BG); Bar.Name = "Bar"; Bar.Size = UDim2.new(1, 0, 1, 0); Bar.BackgroundColor3 = Color3.new(0,1,0); Bar.BorderSizePixel = 0
+            end
+            HP.Frame.Bar.Size = UDim2.new(1, 0, Hum.Health / Hum.MaxHealth, 0)
+            HP.Frame.Bar.Position = UDim2.new(0,0, 1 - (Hum.Health/Hum.MaxHealth), 0)
+        else if HP then HP:Destroy() end end
+
+        -- ESP LINE (TỪ ĐỈNH MÀN HÌNH - FIX CHUẨN)
+        local Line = LocalPlayer.PlayerGui:FindFirstChild("Line_"..plr.Name)
+        if getgenv().Config.ESP_Line and Hum and Hum.Health > 0 and Root then
+            local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
+            if OnScreen then
+                if not Line then
+                    local SG = LocalPlayer.PlayerGui:FindFirstChild("Fluorite_Lines") or Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+                    SG.Name = "Fluorite_Lines"
+                    Line = Instance.new("Frame", SG); Line.Name = "Line_"..plr.Name
+                    Line.BackgroundColor3 = Color3.new(1,1,1); Line.BorderSizePixel = 0; Line.AnchorPoint = Vector2.new(0.5, 0)
+                end
+                local Start = Vector2.new(Camera.ViewportSize.X / 2, 0)
+                local End = Vector2.new(Pos.X, Pos.Y)
+                Line.Size = UDim2.new(0, 1.2, 0, (End - Start).Magnitude)
+                Line.Position = UDim2.new(0, (Start.X + End.X)/2, 0, (Start.Y + End.Y)/2)
+                Line.Rotation = math.deg(math.atan2(End.Y - Start.Y, End.X - Start.X)) - 90
+            else if Line then Line:Destroy() end end
+        else if Line then Line:Destroy() end end
+
+        -- HITBOX GHOST & SPEED
+        if Root then
+            if getgenv().Config.Hitbox and Hum and Hum.Health > 0 then
+                Root.Size = Vector3.new(getgenv().Config.HitboxSize, getgenv().Config.HitboxSize, getgenv().Config.HitboxSize)
+                Root.Transparency = 1; Root.CanCollide = false
+            else Root.Size = Vector3.new(2, 2, 1); Root.Transparency = 1 end
+        end
+    end
+    RunService.RenderStepped:Connect(Update)
+end
+
+-- [[ 4. GIAO DIỆN MENU & KEY SYSTEM ]] --
+local function LaunchMenu()
+    local SG = Instance.new("ScreenGui", LocalPlayer.PlayerGui); SG.ResetOnSpawn = false
+    local M = Instance.new("Frame", SG); M.Size = UDim2.new(0, 180, 0, 310); M.Position = UDim2.new(0, 20, 0.4, 0); M.BackgroundColor3 = Color3.new(0,0,0); M.BackgroundTransparency = 0.5; Instance.new("UICorner", M)
+
+    local function AddBtn(txt, conf, y, val)
+        local b = Instance.new("TextButton", M); b.Size = UDim2.new(1, -10, 0, 32); b.Position = UDim2.new(0, 5, 0, y); b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(40,40,40); b.TextColor3 = Color3.new(1,1,1); b.Font = "GothamBold"; b.TextSize = 10; Instance.new("UICorner", b)
+        b.MouseButton1Click:Connect(function()
+            if val then getgenv().Config[conf] = val else getgenv().Config[conf] = not getgenv().Config[conf] end
+            b.BackgroundColor3 = (getgenv().Config[conf] == true or getgenv().Config[conf] == 80) and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(40, 40, 40)
+        end)
+    end
+
+    AddBtn("SILENT AIM (BẺ ĐẠN)", "SilentAim", 10)
+    AddBtn("HITBOX GHOST", "Hitbox", 50)
+    AddBtn("BOX BAO NGOÀI", "ESP_Box", 90)
+    AddBtn("MÁU BÊN TAY TRÁI", "ESP_Health", 130)
+    AddBtn("LINE TỪ ĐỈNH (FIX)", "ESP_Line", 170)
+    AddBtn("SPEED (FAST)", "Speed", 210, 80)
+    AddBtn("SPEED (NORMAL)", "Speed", 250, 16)
+
+    for _, v in pairs(Players:GetPlayers()) do CreateESP(v) end
+    Players.PlayerAdded:Connect(CreateESP)
+
+    local F = Instance.new("TextButton", SG); F.Size = UDim2.new(0, 35, 0, 35); F.Position = UDim2.new(0, 20, 0.4, -45); F.Text = "F"; F.BackgroundColor3 = Color3.new(1, 0, 0); Instance.new("UICorner", F).CornerRadius = UDim.new(1,0)
+    F.MouseButton1Click:Connect(function() M.Visible = not M.Visible end)
+end
+
+local function StartKeySystem()
+    local KeyGui = Instance.new("ScreenGui", LocalPlayer.PlayerGui); KeyGui.ResetOnSpawn = false
+    local F = Instance.new("Frame", KeyGui); F.Size = UDim2.new(0, 300, 0, 180); F.Position = UDim2.new(0.5, -150, 0.5, -90); F.BackgroundColor3 = Color3.fromRGB(25, 25, 25); Instance.new("UICorner", F)
+    local Box = Instance.new("TextBox", F); Box.Size = UDim2.new(0, 240, 0, 40); Box.Position = UDim2.new(0.5, -120, 0.35, 0); Box.PlaceholderText = "Nhập Key..."; Box.BackgroundColor3 = Color3.fromRGB(40, 40, 40); Box.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", Box)
+    local Btn = Instance.new("TextButton", F); Btn.Size = UDim2.new(0, 240, 0, 40); Btn.Position = UDim2.new(0.5, -120, 0.65, 0); Btn.Text = "XÁC NHẬN"; Btn.BackgroundColor3 = Color3.fromRGB(255, 45, 45); Btn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", Btn)
+
+    Btn.MouseButton1Click:Connect(function()
+        if KeyDatabase[Box.Text] then KeyGui:Destroy(); LaunchMenu() else Btn.Text = "SAI KEY!"; task.wait(1); Btn.Text = "XÁC NHẬN" end
+    end)
+end
+
+StartKeySystem()
