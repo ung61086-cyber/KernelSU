@@ -1,0 +1,127 @@
+-- [[ 1. THIẾT LẬP HỆ THỐNG ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Global_Green = Color3.fromRGB(0, 255, 127)
+
+_G.Config = {
+    Aimbot = false, SilentAim = false, FOVSize = 120, ShowFOV = false,
+    Hitbox = false, HitboxSize = 25,
+    ESP_Line = false, ESP_Box = false, ESP_HP = false,
+    NoGun = false, AntiStun = false, Smoothness = 0.08
+}
+
+-- [[ 2. QUẢN LÝ BỘ NHỚ VẼ (CHỐNG GIẬT) ]] --
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1; FOVCircle.Color = Global_Green; FOVCircle.Filled = false
+
+local ESP_Cache = {}
+
+local function CreateESP(plr)
+    if ESP_Cache[plr] then return end
+    ESP_Cache[plr] = {
+        Line = Drawing.new("Line"),
+        Box = Drawing.new("Square"),
+        Health = Drawing.new("Text")
+    }
+    local d = ESP_Cache[plr]
+    d.Line.Thickness = 1.2; d.Box.Thickness = 1.2; d.Health.Size = 14
+end
+
+local function CleanESP(plr)
+    if ESP_Cache[plr] then
+        for _, obj in pairs(ESP_Cache[plr]) do obj:Remove() end
+        ESP_Cache[plr] = nil
+    end
+end
+
+-- [[ 3. LOGIC PvP (SILENT AIM & AIMBOT) ]] --
+local function GetClosest()
+    local target, dist = nil, _G.Config.FOVSize
+    local mPos = UserInputService:GetMouseLocation()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            if v.Character.Humanoid.Health > 0 then
+                local p, vis = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                if vis then
+                    local mag = (Vector2.new(p.X, p.Y) - mPos).Magnitude
+                    if mag < dist then target = v; dist = mag end
+                end
+            end
+        end
+    end
+    return target
+end
+
+-- Hook bẻ đạn
+local old; old = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
+    if _G.Config.SilentAim and getnamecallmethod() == "FireServer" then
+        local t = GetClosest()
+        if t then
+            for i, v in pairs(args) do
+                if typeof(v) == "Vector3" then args[i] = t.Character.HumanoidRootPart.Position
+                elseif typeof(v) == "CFrame" then args[i] = t.Character.HumanoidRootPart.CFrame end
+            end
+        end
+    end
+    return old(self, unpack(args))
+end)
+
+-- [[ 4. VÒNG LẶP CẬP NHẬT CHÍNH ]] --
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Visible = _G.Config.ShowFOV
+    FOVCircle.Radius = _G.Config.FOVSize
+    FOVCircle.Position = UserInputService:GetMouseLocation()
+
+    for plr, data in pairs(ESP_Cache) do
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if hrp and hum and hum.Health > 0 then
+            local pos, vis = Camera:WorldToViewportPoint(hrp.Position)
+            if vis then
+                local sX, sY = 2200 / pos.Z, 3200 / pos.Z
+                -- Line
+                data.Line.Visible = _G.Config.ESP_Line
+                data.Line.From = Vector2.new(Camera.ViewportSize.X/2, 0)
+                data.Line.To = Vector2.new(pos.X, pos.Y - sY/2)
+                data.Line.Color = Global_Green
+                -- Box
+                data.Box.Visible = _G.Config.ESP_Box
+                data.Box.Size = Vector2.new(sX, sY)
+                data.Box.Position = Vector2.new(pos.X - sX/2, pos.Y - sY/2)
+                data.Box.Color = Global_Green
+                -- HP
+                data.Health.Visible = _G.Config.ESP_HP
+                data.Health.Text = "["..math.floor(hum.Health).."%]"
+                data.Health.Position = Vector2.new(pos.X, pos.Y + sY/2 + 2)
+                data.Health.Color = Global_Green; data.Health.Center = true; data.Health.Outline = true
+            else data.Line.Visible = false; data.Box.Visible = false; data.Health.Visible = false end
+        else data.Line.Visible = false; data.Box.Visible = false; data.Health.Visible = false end
+    end
+
+    -- Hitbox & NoGun
+    if _G.Config.Hitbox then
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                v.Character.HumanoidRootPart.Size = Vector3.new(_G.Config.HitboxSize, _G.Config.HitboxSize, _G.Config.HitboxSize)
+                v.Character.HumanoidRootPart.Transparency = 0.8; v.Character.HumanoidRootPart.CanCollide = false
+            end
+        end
+    end
+    
+    if _G.Config.NoGun then
+        local t = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if t and (t:FindFirstChild("Gun") or t.ToolTip == "Gun") then t.Parent = LocalPlayer.Backpack end
+    end
+end)
+
+-- [[ 5. GIAO DIỆN (GIỮ NGUYÊN NHƯ VIDEO) ]] --
+-- Copy phần LaunchMenu từ bản trước của bạn vào đây là xong!
+for _, v in pairs(Players:GetPlayers()) do CreateESP(v) end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(CleanESP)
