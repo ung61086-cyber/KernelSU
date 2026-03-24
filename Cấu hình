@@ -1,0 +1,167 @@
+-- [[ 1. THIẾT LẬP HỆ THỐNG & CẤU HÌNH ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Global_Green = Color3.fromRGB(0, 255, 127)
+local Global_Red = Color3.fromRGB(255, 45, 45)
+
+_G.Config = {
+    Aimbot = false, SilentAim = false, FOVSize = 120, ShowFOV = false,
+    Hitbox = false, HitboxSize = 25,
+    ESP_Line = false, ESP_Box = false, ESP_HP = false,
+    NoGun = false, AntiStun = false, Smoothness = 0.1
+}
+
+-- [[ 2. HỆ THỐNG VẼ (CHỐNG LAG / CHỐNG MẠNG NHỆN) ]] --
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5; FOVCircle.Color = Global_Green; FOVCircle.Filled = false
+
+local ESP_Cache = {}
+
+local function CreateESP(plr)
+    if ESP_Cache[plr] then return end
+    ESP_Cache[plr] = {
+        Line = Drawing.new("Line"),
+        Box = Drawing.new("Square"),
+        Health = Drawing.new("Text")
+    }
+    local data = ESP_Cache[plr]
+    data.Line.Thickness = 1.5; data.Box.Thickness = 1.5
+end
+
+local function RemoveESP(plr)
+    if ESP_Cache[plr] then
+        ESP_Cache[plr].Line:Remove()
+        ESP_Cache[plr].Box:Remove()
+        ESP_Cache[plr].Health:Remove()
+        ESP_Cache[plr] = nil
+    end
+end
+
+-- [[ 3. LOGIC XỬ LÝ (SILENT AIM & AIMBOT) ]] --
+local function GetClosestTarget()
+    local target = nil; local dist = _G.Config.FOVSize
+    local mousePos = UserInputService:GetMouseLocation()
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local hum = v.Character:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 then
+                local pos, vis = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+                if vis then
+                    local mag = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                    if mag < dist then target = v; dist = mag end
+                end
+            end
+        end
+    end
+    return target
+end
+
+-- Bẻ hướng chiêu (Silent Aim)
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local args = {...}
+    local method = getnamecallmethod()
+    if _G.Config.SilentAim and method == "FireServer" then
+        local target = GetClosestTarget()
+        if target and target.Character then
+            for i, v in pairs(args) do
+                if typeof(v) == "Vector3" then args[i] = target.Character.HumanoidRootPart.Position
+                elseif typeof(v) == "CFrame" then args[i] = target.Character.HumanoidRootPart.CFrame end
+            end
+        end
+    end
+    return oldNamecall(self, unpack(args))
+end)
+
+-- Vòng lặp Render chính
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Visible = _G.Config.ShowFOV
+    FOVCircle.Radius = _G.Config.FOVSize
+    FOVCircle.Position = UserInputService:GetMouseLocation()
+
+    for plr, data in pairs(ESP_Cache) do
+        local char = plr.Character
+        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChild("Humanoid")
+
+        if hrp and hum and hum.Health > 0 then
+            local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
+            if onScreen then
+                local sizeX, sizeY = 2500 / pos.Z, 3500 / pos.Z
+                -- Cập nhật Line
+                data.Line.Visible = _G.Config.ESP_Line
+                data.Line.From = Vector2.new(Camera.ViewportSize.X/2, 0)
+                data.Line.To = Vector2.new(pos.X, pos.Y - sizeY/2)
+                data.Line.Color = Global_Green
+                -- Cập nhật Box
+                data.Box.Visible = _G.Config.ESP_Box
+                data.Box.Size = Vector2.new(sizeX, sizeY)
+                data.Box.Position = Vector2.new(pos.X - sizeX/2, pos.Y - sizeY/2)
+                data.Box.Color = Global_Green
+                -- Cập nhật HP
+                data.Health.Visible = _G.Config.ESP_HP
+                data.Health.Text = "HP: "..math.floor(hum.Health)
+                data.Health.Position = Vector2.new(pos.X, pos.Y + sizeY/2 + 5)
+                data.Health.Color = Global_Green; data.Health.Center = true; data.Health.Outline = true
+            else
+                data.Line.Visible = false; data.Box.Visible = false; data.Health.Visible = false
+            end
+        else
+            data.Line.Visible = false; data.Box.Visible = false; data.Health.Visible = false
+        end
+    end
+
+    -- Hitbox & No Gun
+    if _G.Config.Hitbox then
+        for _, v in pairs(Players:GetPlayers()) do
+            if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                v.Character.HumanoidRootPart.Size = Vector3.new(_G.Config.HitboxSize, _G.Config.HitboxSize, _G.Config.HitboxSize)
+                v.Character.HumanoidRootPart.Transparency = 0.8; v.Character.HumanoidRootPart.CanCollide = false
+            end
+        end
+    end
+
+    if _G.Config.NoGun then
+        local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
+        if tool and (tool:FindFirstChild("Gun") or tool.ToolTip == "Gun") then tool.Parent = LocalPlayer.Backpack end
+    end
+end)
+
+-- [[ 4. GIAO DIỆN MENU ]] --
+local function LaunchMenu()
+    local Screen = Instance.new("ScreenGui", LocalPlayer.PlayerGui); Screen.ResetOnSpawn = false
+    local Main = Instance.new("Frame", Screen); Main.Size = UDim2.new(0, 260, 0, 480); Main.Position = UDim2.new(0.5, -130, 0.5, -240); Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20); Main.Draggable = true; Main.Active = true; Instance.new("UICorner", Main)
+    
+    local Head = Instance.new("Frame", Main); Head.Size = UDim2.new(1, 0, 0, 40); Head.BackgroundColor3 = Global_Red; Instance.new("UICorner", Head)
+    local Title = Instance.new("TextLabel", Head); Title.Size = UDim2.new(1,0,1,0); Title.Text = "BLOX FRUIT MAX (NO KEY)"; Title.TextColor3 = Color3.new(1,1,1); Title.Font = "GothamBold"; Title.BackgroundTransparency = 1
+
+    local function CreateBtn(name, configKey, y)
+        local b = Instance.new("TextButton", Main); b.Size = UDim2.new(0, 220, 0, 32); b.Position = UDim2.new(0.5, -110, 0, y); b.Text = name; b.BackgroundColor3 = Color3.fromRGB(35, 35, 35); b.TextColor3 = Color3.new(1,1,1); b.Font = "GothamBold"; b.TextSize = 10; Instance.new("UICorner", b)
+        b.MouseButton1Click:Connect(function() 
+            _G.Config[configKey] = not _G.Config[configKey]
+            b.BackgroundColor3 = _G.Config[configKey] and Global_Green or Color3.fromRGB(35, 35, 35)
+            b.TextColor3 = _G.Config[configKey] and Color3.new(0,0,0) or Color3.new(1,1,1)
+        end)
+    end
+
+    CreateBtn("SILENT AIM (BẺ CHIÊU)", "SilentAim", 60)
+    CreateBtn("HIỆN VÒNG TRÒN FOV", "ShowFOV", 100)
+    CreateBtn("SIÊU HITBOX", "Hitbox", 140)
+    CreateBtn("ESP LINE", "ESP_Line", 180)
+    CreateBtn("ESP BOX", "ESP_Box", 220)
+    CreateBtn("ESP HEALTH", "ESP_HP", 260)
+    CreateBtn("KHÓA SÚNG (NO GUN)", "NoGun", 300)
+    CreateBtn("CHỐNG CHOÁNG (ANTI-STUN)", "AntiStun", 340)
+
+    local OpenBtn = Instance.new("TextButton", Screen); OpenBtn.Size = UDim2.new(0, 40, 0, 40); OpenBtn.Position = UDim2.new(0, 10, 0.5, 0); OpenBtn.Text = "F"; OpenBtn.BackgroundColor3 = Global_Red; OpenBtn.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", OpenBtn).CornerRadius = UDim.new(1,0)
+    OpenBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible end)
+end
+
+-- Khởi tạo
+Players.PlayerRemoving:Connect(RemoveESP)
+for _, v in pairs(Players:GetPlayers()) do CreateESP(v) end
+Players.PlayerAdded:Connect(CreateESP)
+LaunchMenu()
