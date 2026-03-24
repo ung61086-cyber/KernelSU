@@ -1,0 +1,191 @@
+-- [[ 1. KHỞI TẠO HỆ THỐNG MEGA VIP ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Global_Red = Color3.fromRGB(255, 0, 0)
+local Global_Green = Color3.fromRGB(0, 255, 127)
+
+_G.Config = {
+    Aimbot = false, ShowFOV = false, FOVSize = 120, Smoothness = 0.1, AimPart = "Head",
+    ESP_Box = false, ESP_HP = false, ESP_Line = false,
+    HitboxHead = false, HitboxBody = false, HitboxSize = 25,
+    AutoClick = false,
+    SpeedHack = false, SpeedValue = 50, -- Mặc định chạy nhanh 50
+    JumpHack = false, JumpValue = 100    -- Mặc định nhảy cao 100
+}
+
+local KeyDatabase = { ["tudeptrai2013"] = 863913600 }
+
+-- [[ 2. HỆ THỐNG VẬN ĐỘNG (SPEED & JUMP) ]] --
+task.spawn(function()
+    while task.wait() do
+        local Character = LocalPlayer.Character
+        local Hum = Character and Character:FindFirstChild("Humanoid")
+        if Hum then
+            -- Xử lý Speed
+            if _G.Config.SpeedHack then
+                Hum.WalkSpeed = _G.Config.SpeedValue
+            else
+                Hum.WalkSpeed = 16 -- Tốc độ gốc
+            end
+            -- Xử lý Jump
+            if _G.Config.JumpHack then
+                Hum.JumpPower = _G.Config.JumpValue
+                Hum.UseJumpPower = true
+            else
+                Hum.JumpPower = 50 -- Nhảy gốc
+            end
+        end
+    end
+end)
+
+-- [[ 3. AUTO CLICKER ]] --
+task.spawn(function()
+    while task.wait() do
+        if _G.Config.AutoClick then
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton1(Vector2.new(0,0))
+        end
+    end
+end)
+
+-- [[ 4. HỆ THỐNG CHIẾN ĐẤU & ESP ]] --
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1.5; FOVCircle.Color = Global_Red; FOVCircle.Filled = false
+
+local function GetClosest()
+    local t, dist = nil, _G.Config.FOVSize
+    for _, v in pairs(Players:GetPlayers()) do
+        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild(_G.Config.AimPart) then
+            local Hum = v.Character:FindFirstChild("Humanoid")
+            if Hum and Hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(v.Character[_G.Config.AimPart].Position)
+                if onScreen then
+                    local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                    if mag < dist then t = v; dist = mag end
+                end
+            end
+        end
+    end
+    return t
+end
+
+local function CreateESP(plr)
+    local Lines = {}
+    for i=1,8 do Lines[i] = Drawing.new("Line"); Lines[i].Thickness = 1.5; Lines[i].Color = Global_Red end
+    local MainLine = Drawing.new("Line"); MainLine.Color = Global_Red
+    local HB_Back = Drawing.new("Line"); HB_Back.Thickness = 4; HB_Back.Color = Color3.new(0,0,0)
+    local HB_Main = Drawing.new("Line"); HB_Main.Thickness = 2
+    local HT = Drawing.new("Text"); HT.Size = 14; HT.Outline = true; HT.Center = true; HT.Color = Color3.new(1,1,1)
+
+    RunService.RenderStepped:Connect(function()
+        if not plr.Parent then 
+            for _, l in pairs(Lines) do l:Remove() end
+            MainLine:Remove(); HB_Back:Remove(); HB_Main:Remove(); HT:Remove(); return 
+        end
+        FOVCircle.Visible = _G.Config.ShowFOV; FOVCircle.Radius = _G.Config.FOVSize; FOVCircle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+        
+        if _G.Config.Aimbot then
+            local t = GetClosest()
+            if t then Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, t.Character[_G.Config.AimPart].Position), _G.Config.Smoothness) end
+        end
+
+        if plr.Character and plr ~= LocalPlayer then
+            local Root = plr.Character:FindFirstChild("HumanoidRootPart")
+            local Head = plr.Character:FindFirstChild("Head")
+            local Hum = plr.Character:FindFirstChild("Humanoid")
+
+            if Root and Head and Hum and Hum.Health > 0 then
+                -- HITBOX LOGIC & GHOST
+                if _G.Config.HitboxHead then
+                    Head.Size = Vector3.new(_G.Config.HitboxSize, _G.Config.HitboxSize, _G.Config.HitboxSize)
+                    Head.Transparency = 0.7; Head.CanCollide = false
+                else Head.Size = Vector3.new(1.2, 1.2, 1.2); Head.Transparency = 0 end
+
+                if _G.Config.HitboxBody then
+                    Root.Size = Vector3.new(_G.Config.HitboxSize, _G.Config.HitboxSize, _G.Config.HitboxSize)
+                    Root.Transparency = 0.8; Root.CanCollide = false
+                else Root.Size = Vector3.new(2, 2, 1); Root.Transparency = 1 end
+
+                if _G.Config.HitboxHead or _G.Config.HitboxBody then
+                    for _, p in pairs(plr.Character:GetChildren()) do if p:IsA("BasePart") then p.CanCollide = false end end
+                end
+
+                -- ESP DRAWING
+                local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
+                if OnScreen then
+                    local SX, SY = 2200/Pos.Z, 3200/Pos.Z
+                    local X, Y, F = Pos.X, Pos.Y, (2200/Pos.Z)*0.25
+                    for _, l in pairs(Lines) do l.Visible = _G.Config.ESP_Box end
+                    if _G.Config.ESP_Box then
+                        Lines[1].From = Vector2.new(X-SX/2, Y-SY/2); Lines[1].To = Vector2.new(X-SX/2+F, Y-SY/2)
+                        Lines[2].From = Vector2.new(X-SX/2, Y-SY/2); Lines[2].To = Vector2.new(X-SX/2, Y-SY/2+F)
+                        Lines[3].From = Vector2.new(X+SX/2, Y-SY/2); Lines[3].To = Vector2.new(X+SX/2-F, Y-SY/2)
+                        Lines[4].From = Vector2.new(X+SX/2, Y-SY/2); Lines[4].To = Vector2.new(X+SX/2, Y-SY/2+F)
+                        Lines[5].From = Vector2.new(X-SX/2, Y+SY/2); Lines[5].To = Vector2.new(X-SX/2+F, Y+SY/2)
+                        Lines[6].From = Vector2.new(X-SX/2, Y+SY/2); Lines[6].To = Vector2.new(X-SX/2, Y+SY/2-F)
+                        Lines[7].From = Vector2.new(X+SX/2, Y+SY/2); Lines[7].To = Vector2.new(X+SX/2-F, Y+SY/2)
+                        Lines[8].From = Vector2.new(X+SX/2, Y+SY/2); Lines[8].To = Vector2.new(X+SX/2, Y+SY/2-F)
+                    end
+                    if _G.Config.ESP_HP then
+                        local BX = X-SX/2-6; local HH = (Hum.Health/Hum.MaxHealth)*SY
+                        HB_Back.Visible = true; HB_Back.From = Vector2.new(BX, Y+SY/2); HB_Back.To = Vector2.new(BX, Y-SY/2)
+                        HB_Main.Visible = true; HB_Main.From = Vector2.new(BX, Y+SY/2); HB_Main.To = Vector2.new(BX, (Y+SY/2)-HH); HB_Main.Color = Global_Green:Lerp(Global_Red, 1-(Hum.Health/Hum.MaxHealth))
+                        HT.Visible = true; HT.Text = math.floor(Hum.Health); HT.Position = Vector2.new(BX-15, (Y+SY/2)-HH-7)
+                    else HB_Back.Visible=false; HB_Main.Visible=false; HT.Visible=false end
+                    MainLine.Visible = _G.Config.ESP_Line; MainLine.From = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y); MainLine.To = Vector2.new(X, Y+SY/2)
+                else for _, l in pairs(Lines) do l.Visible = false end; MainLine.Visible = false; HB_Back.Visible = false; HB_Main.Visible = false; HT.Visible = false end
+            end
+        end
+    end)
+end
+
+-- [[ 5. MENU SIÊU CẤP ]] --
+local function Launch()
+    local SG = Instance.new("ScreenGui", LocalPlayer.PlayerGui); SG.ResetOnSpawn = false
+    local M = Instance.new("Frame", SG); M.Size = UDim2.new(0, 260, 0, 580); M.Position = UDim2.new(0.5, -130, 0.5, -290); M.BackgroundColor3 = Color3.fromRGB(15,15,15); M.Active = true; M.Draggable = true; Instance.new("UICorner", M)
+    local H = Instance.new("Frame", M); H.Size = UDim2.new(1,0,0,40); H.BackgroundColor3 = Global_Red; Instance.new("UICorner", H)
+    local T = Instance.new("TextLabel", H); T.Size = UDim2.new(1,0,1,0); T.Text = "FLUORITE V8.0 MEGA VIP"; T.TextColor3 = Color3.new(1,1,1); T.Font = "GothamBold"; T.BackgroundTransparency = 1
+
+    local function Btn(txt, conf, y)
+        local b = Instance.new("TextButton", M); b.Size = UDim2.new(0, 220, 0, 30); b.Position = UDim2.new(0.5, -110, 0, y); b.Text = txt; b.BackgroundColor3 = Color3.fromRGB(30,30,30); b.TextColor3 = Color3.new(1,1,1); b.Font = "GothamBold"; b.TextSize = 10; Instance.new("UICorner", b)
+        b.MouseButton1Click:Connect(function() _G.Config[conf] = not _G.Config[conf]; b.TextColor3 = _G.Config[conf] and Global_Green or Color3.new(1,1,1) end)
+    end
+
+    Btn("AUTO AIMBOT", "Aimbot", 45)
+    Btn("ESP BOX", "ESP_Box", 80)
+    Btn("ESP HP", "ESP_HP", 115)
+    Btn("HITBOX HEAD", "HitboxHead", 150)
+    Btn("HITBOX BODY", "HitboxBody", 185)
+    Btn("AUTO CLICKER", "AutoClick", 220)
+    
+    -- TÍNH NĂNG MỚI (SPEED & JUMP)
+    Btn("SPEED HACK (CHẠY)", "SpeedHack", 260)
+    local S_Val = Instance.new("TextButton", M); S_Val.Size = UDim2.new(0, 220, 0, 30); S_Val.Position = UDim2.new(0.5, -110, 0, 295); S_Val.Text = "SPEED: ".._G.Config.SpeedValue; S_Val.BackgroundColor3 = Color3.fromRGB(45,45,45); S_Val.TextColor3 = Global_Green; Instance.new("UICorner", S_Val)
+    S_Val.MouseButton1Click:Connect(function() _G.Config.SpeedValue = (_G.Config.SpeedValue >= 200) and 50 or _G.Config.SpeedValue + 50; S_Val.Text = "SPEED: ".._G.Config.SpeedValue end)
+
+    Btn("JUMP HACK (NHẢY)", "JumpHack", 335)
+    local J_Val = Instance.new("TextButton", M); J_Val.Size = UDim2.new(0, 220, 0, 30); J_Val.Position = UDim2.new(0.5, -110, 0, 370); J_Val.Text = "JUMP: ".._G.Config.JumpValue; J_Val.BackgroundColor3 = Color3.fromRGB(45,45,45); J_Val.TextColor3 = Global_Green; Instance.new("UICorner", J_Val)
+    J_Val.MouseButton1Click:Connect(function() _G.Config.JumpValue = (_G.Config.JumpValue >= 300) and 100 or _G.Config.JumpValue + 50; J_Val.Text = "JUMP: ".._G.Config.JumpValue end)
+
+    local SZ = Instance.new("TextButton", M); SZ.Size = UDim2.new(0, 220, 0, 30); SZ.Position = UDim2.new(0.5, -110, 0, 415); SZ.Text = "HITBOX SIZE: ".._G.Config.HitboxSize; SZ.BackgroundColor3 = Color3.fromRGB(45,45,45); SZ.TextColor3 = Global_Green; Instance.new("UICorner", SZ)
+    SZ.MouseButton1Click:Connect(function() _G.Config.HitboxSize = (_G.Config.HitboxSize >= 50) and 10 or _G.Config.HitboxSize + 10; SZ.Text = "HITBOX SIZE: ".._G.Config.HitboxSize end)
+
+    local C = Instance.new("TextButton", SG); C.Size = UDim2.new(0,40,0,40); C.Position = UDim2.new(0,10,0.5,-20); C.Text = "F"; C.BackgroundColor3 = Global_Red; C.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", C).CornerRadius = UDim.new(1,0)
+    C.MouseButton1Click:Connect(function() M.Visible = not M.Visible end)
+end
+
+-- [[ 6. KEY SYSTEM ]] --
+local function Auth()
+    local SG = Instance.new("ScreenGui", LocalPlayer.PlayerGui)
+    local F = Instance.new("Frame", SG); F.Size = UDim2.new(0, 300, 0, 160); F.Position = UDim2.new(0.5, -150, 0.5, -80); F.BackgroundColor3 = Color3.fromRGB(20,20,20); Instance.new("UICorner", F)
+    local B = Instance.new("TextBox", F); B.Size = UDim2.new(0, 240, 0, 40); B.Position = UDim2.new(0.5, -120, 0.3, 0); B.PlaceholderText = "Key: tudeptrai2013"; B.BackgroundColor3 = Color3.fromRGB(40,40,40); B.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", B)
+    local L = Instance.new("TextButton", F); L.Size = UDim2.new(0, 100, 0, 35); L.Position = UDim2.new(0.5, -50, 0.7, 0); L.Text = "LOGIN"; L.BackgroundColor3 = Global_Red; L.TextColor3 = Color3.new(1,1,1); Instance.new("UICorner", L)
+    L.MouseButton1Click:Connect(function() if KeyDatabase[B.Text] then SG:Destroy(); Launch() else L.Text = "SAI KEY!"; task.wait(1); L.Text = "LOGIN" end end)
+end
+
+for _, v in pairs(Players:GetPlayers()) do CreateESP(v) end
+Players.PlayerAdded:Connect(CreateESP)
+Auth()
