@@ -1,0 +1,109 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "TuTran Mods v5.1 | Tudeptrai Edition",
+   LoadingTitle = "Đang kiểm tra dữ liệu...",
+   LoadingSubtitle = "by Tudeptrai",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "NgoTranConfig",
+      FileName = "MainConfig"
+   },
+   KeySystem = false -- Bạn có thể bật true nếu muốn thêm hệ thống Key
+})
+
+-- TAB PLAYER
+local PlayerTab = Window:CreateTab("PLAYER", 4483362458)
+
+PlayerTab:CreateToggle({
+   Name = "Enable ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+       -- Logic ESP: Hiện khung người chơi
+       _G.ESP_Enabled = Value
+   end,
+})
+
+PlayerTab:CreateToggle({
+   Name = "Box ESP",
+   CurrentValue = false,
+   Callback = function(Value)
+       -- Logic hiện khung hình hộp
+   end,
+})
+
+PlayerTab:CreateSlider({
+   Name = "Fix ESP",
+   Range = {-100, 100},
+   Increment = 1,
+   CurrentValue = 0,
+   Callback = function(Value)
+       -- Điều chỉnh độ lệch ESP
+   end,
+})
+
+-- TAB VISUAL
+local VisualTab = Window:CreateTab("VISUAL", 4483362458)
+
+VisualTab:CreateToggle({
+   Name = "Name ESP",
+   CurrentValue = false,
+   Callback = function(Value) end,
+})
+
+VisualTab:CreateToggle({
+   Name = "Show FOV",
+   CurrentValue = false,
+   Callback = function(Value) end,
+})
+
+VisualTab:CreateSlider({
+   Name = "Fov Direction",
+   Range = {0, 300},
+   Increment = 1,
+   CurrentValue = 150,
+   Callback = function(Value) end,
+})
+
+-- TAB AIMBOT
+local AimTab = Window:CreateTab("AIMBOT", 4483362458)
+
+AimTab:CreateSlider({
+   Name = "FOV Radius",
+   Range = {0, 360},
+   Increment = 1,
+   CurrentValue = 136,
+   Callback = function(Value) end,
+})
+
+AimTab:CreateDropdown({
+   Name = "Aim Target",
+   Options = {"Head", "Neck", "Body"},
+   CurrentValue = "Head",
+   Callback = function(Option) end,
+})
+
+-- TAB CONFIG (Để ẩn/hiện và cài đặt)
+local ConfigTab = Window:CreateTab("CONFIG", 4483362458)
+
+ConfigTab:CreateLabel("Trạng thái: Undetected")
+
+ConfigTab:CreateKeybind({
+   Name = "Ẩn / Hiện Menu",
+   CurrentKeybind = "RightControl", -- Phím để ẩn/hiện menu
+   HoldToInteract = false,
+   Flag = "Keybind1",
+   Callback = function(Keybind)
+       Rayfield:Notify({
+           Title = "Thông báo",
+           Content = "Bạn vừa nhấn phím tắt menu!",
+           Duration = 2
+       })
+   end,
+})
+
+Rayfield:Notify({
+   Title = "Kích hoạt thành công!",
+   Content = "Chào mừng Tudeptrai quay trở lại.",
+   Duration = 5
+})
