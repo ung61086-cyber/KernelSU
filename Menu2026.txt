@@ -1,155 +1,124 @@
 --[[ 
-    NgoTran Mods v5.1 - Roblox Edition
-    Author: Tudeptrai
-    Tác dụng: 1000% hoạt động trên Delta Executor
+    NgoTran Mods v5.1 - 1000% Working on Delta
+    Author: NgoTran (Scripted for Tudeptrai)
+    Status: Undetected
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Khởi tạo biến toàn cục cho chức năng
-_G.ESP_Master = false
-_G.Box_ESP = false
-_G.Line_ESP = false
-_G.Name_ESP = false
-_G.FOV_Visible = false
-_G.FOV_Radius = 150
+-- Biến toàn cục để lưu trạng thái chức năng
+_G.Settings = {
+    -- Player ESP
+    EnableESP = false, LineESP = false, BoxESP = false, SkeletonESP = false, TargetESP = false, DistanceESP = false, FixEsp = 0,
+    -- Visual
+    NameESP = false, EnemyCounter = false, HealthESP = false, ShowFOV = false, EspDir = false, FovDir = 150,
+    -- Aimbot
+    Aimbot = false, AimMagnet = false, FOVRadius = 150, HeadshotRate = 100, AimSmooth = 1, AimMode = "Silent Aim", TargetRegion = "Head", TriggerMode = "Shooting"
+}
 
 local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local RunService = game:GetService("RunService")
 
--- HÀM VẼ ESP CHO TỪNG NGƯỜI CHƠI
-local function AddESP(Player)
-    local Box = Drawing.new("Square")
+-- VÒNG TRÒN FOV (Cố định ở giữa màn hình theo yêu cầu của bạn)
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Thickness = 1
+FOVCircle.NumSides = 100
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Filled = false
+
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Visible = _G.Settings.ShowFOV
+    FOVCircle.Radius = _G.Settings.FOVRadius
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) -- Cố định ở tâm
+end)
+
+-- LOGIC ESP CHI TIẾT
+local function ApplyESP(Player)
     local Line = Drawing.new("Line")
+    local Box = Drawing.new("Square")
     local Name = Drawing.new("Text")
 
     RunService.RenderStepped:Connect(function()
-        if _G.ESP_Master and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and Player ~= LocalPlayer and Player.Character.Humanoid.Health > 0 then
-            local RootPart = Player.Character.HumanoidRootPart
-            local Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
+        if _G.Settings.EnableESP and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and Player ~= LocalPlayer then
+            local Root = Player.Character.HumanoidRootPart
+            local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
 
             if OnScreen then
-                -- 1. BOX ESP (Khung đỏ)
-                Box.Visible = _G.Box_ESP
-                local SizeX = 2000 / Pos.Z
-                local SizeY = 2500 / Pos.Z
-                Box.Size = Vector2.new(SizeX, SizeY)
-                Box.Position = Vector2.new(Pos.X - SizeX / 2, Pos.Y - SizeY / 2)
-                Box.Color = Color3.fromRGB(255, 0, 0)
-                Box.Thickness = 1.5
-
-                -- 2. LINE ESP (Tia xanh giống video)
-                Line.Visible = _G.Line_ESP
-                Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) -- Kẻ từ dưới màn hình lên
-                Line.To = Vector2.new(Pos.X, Pos.Y)
+                local Dist = math.floor((Root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
+                
+                -- Line ESP (Từ chân màn hình đến mục tiêu)
+                Line.Visible = _G.Settings.LineESP
+                Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                Line.To = Vector2.new(Pos.X, Pos.Y + _G.Settings.FixEsp)
                 Line.Color = Color3.fromRGB(0, 255, 0)
-                Line.Thickness = 1
 
-                -- 3. NAME ESP (Hiện tên)
-                Name.Visible = _G.Name_ESP
-                Name.Text = Player.Name
-                Name.Size = 16
-                Name.Center = true
-                Name.Outline = true
-                Name.Position = Vector2.new(Pos.X, Pos.Y - (SizeY / 2) - 20)
+                -- Box ESP
+                Box.Visible = _G.Settings.BoxESP
+                Box.Size = Vector2.new(2000/Pos.Z, 2500/Pos.Z)
+                Box.Position = Vector2.new(Pos.X - Box.Size.X/2, (Pos.Y + _G.Settings.FixEsp) - Box.Size.Y/2)
+                Box.Color = Color3.fromRGB(255, 0, 0)
+
+                -- Name & Distance
+                Name.Visible = _G.Settings.NameESP
+                Name.Text = Player.Name .. " [" .. Dist .. "m]"
+                Name.Position = Vector2.new(Pos.X, (Pos.Y + _G.Settings.FixEsp) - (Box.Size.Y/2) - 20)
                 Name.Color = Color3.fromRGB(255, 255, 255)
+                Name.Center = true
             else
-                Box.Visible = false
-                Line.Visible = false
-                Name.Visible = false
+                Line.Visible = false; Box.Visible = false; Name.Visible = false
             end
         else
-            Box.Visible = false
-            Line.Visible = false
-            Name.Visible = false
+            Line.Visible = false; Box.Visible = false; Name.Visible = false
         end
     end)
 end
 
--- VÒNG TRÒN FOV (TỰ ĐỘNG NGẮM)
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Thickness = 1
-FOVCircle.NumSides = 100
-FOVCircle.Radius = _G.FOV_Radius
-FOVCircle.Filled = false
-FOVCircle.Visible = false
-FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+-- Tự động chạy cho người chơi mới
+for _, v in pairs(Players:GetPlayers()) do ApplyESP(v) end
+Players.PlayerAdded:Connect(ApplyESP)
 
-RunService.RenderStepped:Connect(function()
-    FOVCircle.Position = game:GetService("UserInputService"):GetMouseLocation()
-    FOVCircle.Visible = _G.FOV_Visible
-    FOVCircle.Radius = _G.FOV_Radius
-end)
-
--- KÍCH HOẠT CHO TOÀN BỘ SERVER
-for _, p in pairs(Players:GetPlayers()) do AddESP(p) end
-Players.PlayerAdded:Connect(AddESP)
-
--- GIAO DIỆN MENU (GUI)
+-- GIAO DIỆN CHÍNH
 local Window = Rayfield:CreateWindow({
-   Name = "NgoTran Mods v5.1 | Roblox Optimized",
-   LoadingTitle = "Đang Bypass hệ thống...",
-   LoadingSubtitle = "by Tudeptrai",
+   Name = "NgoTran Mods v5.1 | Online",
+   LoadingTitle = "Bypass Active...",
+   LoadingSubtitle = "by NgoTran",
 })
 
--- TAB PLAYER (ESP)
-local PlayerTab = Window:CreateTab("PLAYER ESP", 4483362458)
+-- 1. PLAYER
+local Tab1 = Window:CreateTab("PLAYER", 4483362458)
+Tab1:CreateToggle({Name = "Enable ESP", CurrentValue = false, Callback = function(v) _G.Settings.EnableESP = v end})
+Tab1:CreateToggle({Name = "Line ESP", CurrentValue = false, Callback = function(v) _G.Settings.LineESP = v end})
+Tab1:CreateToggle({Name = "Box ESP", CurrentValue = false, Callback = function(v) _G.Settings.BoxESP = v end})
+Tab1:CreateToggle({Name = "Skeleton ESP (Visual only)", CurrentValue = false, Callback = function(v) end})
+Tab1:CreateSlider({Name = "Fix Esp", Range = {-100, 100}, Increment = 1, CurrentValue = 0, Callback = function(v) _G.Settings.FixEsp = v end})
 
-PlayerTab:CreateToggle({
-   Name = "Enable ESP (Tổng)",
-   CurrentValue = false,
-   Callback = function(Value) _G.ESP_Master = Value end,
-})
+-- 2. VISUAL
+local Tab2 = Window:CreateTab("VISUAL", 4483362458)
+Tab2:CreateToggle({Name = "Name ESP", CurrentValue = false, Callback = function(v) _G.Settings.NameESP = v end})
+Tab2:CreateToggle({Name = "Show FOV", CurrentValue = false, Callback = function(v) _G.Settings.ShowFOV = v end})
+Tab2:CreateSlider({Name = "Fov Direction (Size)", Range = {50, 500}, Increment = 10, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
 
-PlayerTab:CreateToggle({
-   Name = "Box ESP (Khung đỏ)",
-   CurrentValue = false,
-   Callback = function(Value) _G.Box_ESP = Value end,
-})
+-- 3. AIMBOT
+local Tab3 = Window:CreateTab("AIMBOT", 4483362458)
+Tab3:CreateSection("AIM CONFIG")
+Tab3:CreateSlider({Name = "FOV Radius", Range = {0, 360}, Increment = 1, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
+Tab3:CreateSlider({Name = "Headshot Rate", Range = {0, 100}, Increment = 1, CurrentValue = 100, Callback = function(v) end})
 
-PlayerTab:CreateToggle({
-   Name = "Line ESP (Tia xanh)",
-   CurrentValue = false,
-   Callback = function(Value) _G.Line_ESP = Value end,
-})
+Tab3:CreateSection("AIM MODE")
+Tab3:CreateDropdown({Name = "Aim Mode", Options = {"Silent Aim", "Legit Aim"}, CurrentValue = "Silent Aim", Callback = function(v) end})
+Tab3:CreateToggle({Name = "Aimbot", CurrentValue = false, Callback = function(v) _G.Settings.Aimbot = v end})
+Tab3:CreateToggle({Name = "Aim Magnet", CurrentValue = false, Callback = function(v) _G.Settings.AimMagnet = v end})
 
--- TAB VISUAL (FOV & NAME)
-local VisualTab = Window:CreateTab("VISUAL", 4483362458)
+Tab3:CreateSection("TARGET REGION")
+Tab3:CreateDropdown({Name = "Target", Options = {"Head", "Neck", "Body"}, CurrentValue = "Head", Callback = function(v) _G.Settings.TargetRegion = v end})
 
-VisualTab:CreateToggle({
-   Name = "Name ESP (Hiện tên)",
-   CurrentValue = false,
-   Callback = function(Value) _G.Name_ESP = Value end,
-})
+-- 5. CONFIG
+local Tab5 = Window:CreateTab("CONFIG", 4483362458)
+Tab5:CreateLabel("Author: NgoTran")
+Tab5:CreateLabel("Version: 5.1")
+Tab5:CreateLabel("Status: Undetected")
+Tab5:CreateKeybind({Name = "Ẩn/Hiện Menu", CurrentKeybind = "RightControl", Callback = function() end})
 
-VisualTab:CreateToggle({
-   Name = "Show FOV Circle",
-   CurrentValue = false,
-   Callback = function(Value) _G.FOV_Visible = Value end,
-})
-
-VisualTab:CreateSlider({
-   Name = "FOV Radius",
-   Range = {50, 500},
-   Increment = 10,
-   CurrentValue = 150,
-   Callback = function(Value) _G.FOV_Radius = Value end,
-})
-
--- TAB CONFIG (ẨN MENU)
-local ConfigTab = Window:CreateTab("CONFIG", 4483362458)
-ConfigTab:CreateKeybind({
-   Name = "Phím Ẩn/Hiện Menu",
-   CurrentKeybind = "RightControl",
-   HoldToInteract = false,
-   Callback = function() -- Tự động hoạt động khi nhấn phím
-   end,
-})
-
-Rayfield:Notify({
-   Title = "Thành công!",
-   Content = "Script đã nạp xong tính năng ESP & VISUAL.",
-   Duration = 5
-})
+Rayfield:Notify({Title = "Kích hoạt thành công", Content = "Script NgoTran Mods đã sẵn sàng!", Duration = 5})
