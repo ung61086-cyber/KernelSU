@@ -1,12 +1,12 @@
 --[[ 
-    NgoTran Mods v5.0.1 - Roblox Edition
-    Author: TUDEPTRAI
+    NgoTran Mods v5.1.1 - Roblox Edition
+    Author: TUDEPTRAI (Updated: Line ESP top, Fix Box, Skeleton)
     Status: Undetected | Bypass Active
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- CẤU HÌNH BIẾN TOÀN CỤC
+-- CẤU HÌNH HỆ THỐNG
 _G.Settings = {
     EnableESP = false, LineESP = false, BoxESP = false, SkeletonESP = false,
     DistanceESP = false, NameESP = false, HealthESP = false, FixEsp = 0,
@@ -19,16 +19,16 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- HÀM TẠO ĐỒ HỌA
-local function CreateLine()
+-- HÀM TẠO ĐỒ HỌA (DRAWING API)
+local function CreateLine(Color)
     local L = Drawing.new("Line")
     L.Thickness = 1
-    L.Color = Color3.fromRGB(0, 255, 0)
+    L.Color = Color or Color3.fromRGB(0, 255, 0)
     L.Transparency = 1
     return L
 end
 
--- VÒNG TRÒN FOV (CỐ ĐỊNH Ở GIỮA)
+-- VÒNG TRÒN FOV (CỐ ĐỊNH TÂM)
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1
 FOVCircle.NumSides = 100
@@ -47,11 +47,13 @@ local function ApplyESP(Player)
     local Box = Drawing.new("Square")
     local Name = Drawing.new("Text")
     
-    -- Các đoạn xương (Skeleton)
+    -- Khớp nối Skeleton (Khung xương)
     local Skeleton = {
-        H_T = CreateLine(), T_LA = CreateLine(), LA_LH = CreateLine(),
-        T_RA = CreateLine(), RA_RH = CreateLine(), T_LL = CreateLine(),
-        LL_LF = CreateLine(), T_RL = CreateLine(), RL_RF = CreateLine()
+        H_T = CreateLine(Color3.fromRGB(255,255,255)), T_LA = CreateLine(Color3.fromRGB(255,255,255)), 
+        LA_LH = CreateLine(Color3.fromRGB(255,255,255)), T_RA = CreateLine(Color3.fromRGB(255,255,255)), 
+        RA_RH = CreateLine(Color3.fromRGB(255,255,255)), T_LL = CreateLine(Color3.fromRGB(255,255,255)), 
+        LL_LF = CreateLine(Color3.fromRGB(255,255,255)), T_RL = CreateLine(Color3.fromRGB(255,255,255)), 
+        RL_RF = CreateLine(Color3.fromRGB(255,255,255))
     }
 
     RunService.RenderStepped:Connect(function()
@@ -61,7 +63,7 @@ local function ApplyESP(Player)
             local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
 
             if OnScreen then
-                -- 1. BOX ESP (FIX SIZE - KHÔNG CHE TẦM NHÌN)
+                -- 1. BOX ESP (FIX SIZE - TỰ ĐỘNG THU NHỎ THEO KHOẢNG CÁCH)
                 local Height = (Camera.ViewportSize.Y / Pos.Z) * 2.5
                 local Width = Height * 0.6
                 Box.Visible = _G.Settings.BoxESP
@@ -70,9 +72,9 @@ local function ApplyESP(Player)
                 Box.Color = Color3.fromRGB(255, 0, 0)
                 Box.Thickness = 1
 
-                -- 2. LINE ESP
+                -- 2. LINE ESP (SỬA LẠI: KẺ TỪ ĐẦU MÀN HÌNH XUỐNG)
                 Line.Visible = _G.Settings.LineESP
-                Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                Line.From = Vector2.new(Camera.ViewportSize.X / 2, 0) -- Tọa độ Y = 0 (Đầu màn hình)
                 Line.To = Vector2.new(Pos.X, Pos.Y + _G.Settings.FixEsp)
 
                 -- 3. NAME & DISTANCE
@@ -82,7 +84,7 @@ local function ApplyESP(Player)
                 Name.Position = Vector2.new(Pos.X, (Pos.Y + _G.Settings.FixEsp) - (Height/2) - 20)
                 Name.Center = true; Name.Size = 14; Name.Outline = true
 
-                -- 4. SKELETON ESP (KHUNG XƯƠNG)
+                -- 4. SKELETON ESP (KHUNG XƯƠNG - HIỆN CHI TIẾT)
                 if _G.Settings.SkeletonESP then
                     local function Connect(L, P1, P2)
                         local Part1, Part2 = Char:FindFirstChild(P1), Char:FindFirstChild(P2)
@@ -117,37 +119,33 @@ local function ApplyESP(Player)
     end)
 end
 
+-- KÍCH HOẠT CHO TẤT CẢ NGƯỜI CHƠI
 for _, v in pairs(Players:GetPlayers()) do ApplyESP(v) end
 Players.PlayerAdded:Connect(ApplyESP)
 
--- GIAO DIỆN RAYFIELD
+-- GIAO DIỆN RAYFIELD (TỐI ƯU CHO MOBILE)
 local Window = Rayfield:CreateWindow({
-   Name = "NgoTran Mods v5.0.1 | TUDEPTRAI",
+   Name = "NgoTran Mods v5.1.1 | Online",
    LoadingTitle = "Bypass Active...",
-   LoadingSubtitle = "Status: Undetected",
+   LoadingSubtitle = "by TUDEPTRAI",
 })
 
--- TAB PLAYER
+-- 1. PLAYER TAB
 local Tab1 = Window:CreateTab("PLAYER", 4483362458)
 Tab1:CreateToggle({Name = "Enable ESP", CurrentValue = false, Callback = function(v) _G.Settings.EnableESP = v end})
-Tab1:CreateToggle({Name = "Line ESP", CurrentValue = false, Callback = function(v) _G.Settings.LineESP = v end})
-Tab1:CreateToggle({Name = "Box ESP", CurrentValue = false, Callback = function(v) _G.Settings.BoxESP = v end})
+Tab1:CreateToggle({Name = "Line ESP (Top)", CurrentValue = false, Callback = function(v) _G.Settings.LineESP = v end})
+Tab1:CreateToggle({Name = "Box ESP (Auto-Size)", CurrentValue = false, Callback = function(v) _G.Settings.BoxESP = v end})
 Tab1:CreateToggle({Name = "Skeleton ESP", CurrentValue = false, Callback = function(v) _G.Settings.SkeletonESP = v end})
-Tab1:CreateSlider({Name = "Fix Esp", Range = {-50, 50}, Increment = 1, CurrentValue = 0, Callback = function(v) _G.Settings.FixEsp = v end})
+Tab1:CreateSlider({Name = "Fix Esp Offset", Range = {-50, 50}, Increment = 1, CurrentValue = 0, Callback = function(v) _G.Settings.FixEsp = v end})
 
--- TAB VISUAL
+-- 2. VISUAL TAB
 local Tab2 = Window:CreateTab("VISUAL", 4483362458)
 Tab2:CreateToggle({Name = "Name ESP", CurrentValue = false, Callback = function(v) _G.Settings.NameESP = v end})
-Tab2:CreateToggle({Name = "Show FOV", CurrentValue = false, Callback = function(v) _G.Settings.ShowFOV = v end})
-Tab2:CreateSlider({Name = "Fov Direction", Range = {50, 500}, Increment = 5, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
+Tab2:CreateToggle({Name = "Show FOV Circle", CurrentValue = false, Callback = function(v) _G.Settings.ShowFOV = v end})
+Tab2:CreateSlider({Name = "FOV Radius", Range = {50, 500}, Increment = 5, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
 
--- TAB AIMBOT
-local Tab3 = Window:CreateTab("AIMBOT", 4483362458)
-Tab3:CreateSlider({Name = "FOV Radius", Range = {0, 500}, Increment = 1, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
-Tab3:CreateDropdown({Name = "Target Region", Options = {"Head", "Neck", "Body"}, CurrentValue = "Head", Callback = function(v) _G.Settings.TargetRegion = v end})
-
--- TAB CONFIG
+-- 5. CONFIG TAB
 local Tab5 = Window:CreateTab("CONFIG", 4483362458)
-Tab5:CreateParagraph({Title = "System Status", Content = "Expiry: Lifetime\nVIP: OK\nVersion: 5.0.1\nAuthor: TUDEPTRAI\nStatus: Undetected"})
+Tab5:CreateParagraph({Title = "Thông Tin Hệ Thống", Content = "Expiry: Lifetime\nVIP Status: OK\nVersion: 5.1.1\nAuthor: TUDEPTRAI\nStatus: Undetected"})
 
-Rayfield:Notify({Title = "Xong!", Content = "Script đã nạp 100% tác dụng.", Duration = 5})
+Rayfield:Notify({Title = "Kích Hoạt Thành Công!", Content = "Line ESP đã được chuyển lên đầu màn hình.", Duration = 5})
