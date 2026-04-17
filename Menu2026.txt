@@ -1,19 +1,17 @@
 --[[ 
-    NgoTran Mods v5.1 - 1000% Working on Delta
-    Author: NgoTran (Scripted for Tudeptrai)
-    Status: Undetected
+    NgoTran Mods v5.0.1 - Roblox Edition
+    Author: TUDEPTRAI
+    Status: Undetected | Bypass Active
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
--- Biến toàn cục để lưu trạng thái chức năng
+-- CẤU HÌNH BIẾN TOÀN CỤC
 _G.Settings = {
-    -- Player ESP
-    EnableESP = false, LineESP = false, BoxESP = false, SkeletonESP = false, TargetESP = false, DistanceESP = false, FixEsp = 0,
-    -- Visual
-    NameESP = false, EnemyCounter = false, HealthESP = false, ShowFOV = false, EspDir = false, FovDir = 150,
-    -- Aimbot
-    Aimbot = false, AimMagnet = false, FOVRadius = 150, HeadshotRate = 100, AimSmooth = 1, AimMode = "Silent Aim", TargetRegion = "Head", TriggerMode = "Shooting"
+    EnableESP = false, LineESP = false, BoxESP = false, SkeletonESP = false,
+    DistanceESP = false, NameESP = false, HealthESP = false, FixEsp = 0,
+    ShowFOV = false, FOVRadius = 150, Aimbot = false, AimMode = "Silent Aim",
+    TargetRegion = "Head"
 }
 
 local Camera = workspace.CurrentCamera
@@ -21,7 +19,16 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
--- VÒNG TRÒN FOV (Cố định ở giữa màn hình theo yêu cầu của bạn)
+-- HÀM TẠO ĐỒ HỌA
+local function CreateLine()
+    local L = Drawing.new("Line")
+    L.Thickness = 1
+    L.Color = Color3.fromRGB(0, 255, 0)
+    L.Transparency = 1
+    return L
+end
+
+-- VÒNG TRÒN FOV (CỐ ĐỊNH Ở GIỮA)
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Thickness = 1
 FOVCircle.NumSides = 100
@@ -31,94 +38,116 @@ FOVCircle.Filled = false
 RunService.RenderStepped:Connect(function()
     FOVCircle.Visible = _G.Settings.ShowFOV
     FOVCircle.Radius = _G.Settings.FOVRadius
-    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2) -- Cố định ở tâm
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 end)
 
--- LOGIC ESP CHI TIẾT
+-- LOGIC ESP TỔNG HỢP
 local function ApplyESP(Player)
-    local Line = Drawing.new("Line")
+    local Line = CreateLine()
     local Box = Drawing.new("Square")
     local Name = Drawing.new("Text")
+    
+    -- Các đoạn xương (Skeleton)
+    local Skeleton = {
+        H_T = CreateLine(), T_LA = CreateLine(), LA_LH = CreateLine(),
+        T_RA = CreateLine(), RA_RH = CreateLine(), T_LL = CreateLine(),
+        LL_LF = CreateLine(), T_RL = CreateLine(), RL_RF = CreateLine()
+    }
 
     RunService.RenderStepped:Connect(function()
-        if _G.Settings.EnableESP and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and Player ~= LocalPlayer then
-            local Root = Player.Character.HumanoidRootPart
+        local Char = Player.Character
+        if _G.Settings.EnableESP and Char and Char:FindFirstChild("HumanoidRootPart") and Player ~= LocalPlayer and Char.Humanoid.Health > 0 then
+            local Root = Char.HumanoidRootPart
             local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
 
             if OnScreen then
-                local Dist = math.floor((Root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
-                
-                -- Line ESP (Từ chân màn hình đến mục tiêu)
+                -- 1. BOX ESP (FIX SIZE - KHÔNG CHE TẦM NHÌN)
+                local Height = (Camera.ViewportSize.Y / Pos.Z) * 2.5
+                local Width = Height * 0.6
+                Box.Visible = _G.Settings.BoxESP
+                Box.Size = Vector2.new(Width, Height)
+                Box.Position = Vector2.new(Pos.X - Width/2, (Pos.Y + _G.Settings.FixEsp) - Height/2)
+                Box.Color = Color3.fromRGB(255, 0, 0)
+                Box.Thickness = 1
+
+                -- 2. LINE ESP
                 Line.Visible = _G.Settings.LineESP
                 Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
                 Line.To = Vector2.new(Pos.X, Pos.Y + _G.Settings.FixEsp)
-                Line.Color = Color3.fromRGB(0, 255, 0)
 
-                -- Box ESP
-                Box.Visible = _G.Settings.BoxESP
-                Box.Size = Vector2.new(2000/Pos.Z, 2500/Pos.Z)
-                Box.Position = Vector2.new(Pos.X - Box.Size.X/2, (Pos.Y + _G.Settings.FixEsp) - Box.Size.Y/2)
-                Box.Color = Color3.fromRGB(255, 0, 0)
-
-                -- Name & Distance
+                -- 3. NAME & DISTANCE
                 Name.Visible = _G.Settings.NameESP
+                local Dist = math.floor((Root.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude)
                 Name.Text = Player.Name .. " [" .. Dist .. "m]"
-                Name.Position = Vector2.new(Pos.X, (Pos.Y + _G.Settings.FixEsp) - (Box.Size.Y/2) - 20)
-                Name.Color = Color3.fromRGB(255, 255, 255)
-                Name.Center = true
+                Name.Position = Vector2.new(Pos.X, (Pos.Y + _G.Settings.FixEsp) - (Height/2) - 20)
+                Name.Center = true; Name.Size = 14; Name.Outline = true
+
+                -- 4. SKELETON ESP (KHUNG XƯƠNG)
+                if _G.Settings.SkeletonESP then
+                    local function Connect(L, P1, P2)
+                        local Part1, Part2 = Char:FindFirstChild(P1), Char:FindFirstChild(P2)
+                        if Part1 and Part2 then
+                            local V1 = Camera:WorldToViewportPoint(Part1.Position)
+                            local V2 = Camera:WorldToViewportPoint(Part2.Position)
+                            L.Visible = true
+                            L.From = Vector2.new(V1.X, V1.Y + _G.Settings.FixEsp)
+                            L.To = Vector2.new(V2.X, V2.Y + _G.Settings.FixEsp)
+                        else L.Visible = false end
+                    end
+                    Connect(Skeleton.H_T, "Head", "UpperTorso")
+                    Connect(Skeleton.T_LA, "UpperTorso", "LeftUpperArm")
+                    Connect(Skeleton.LA_LH, "LeftUpperArm", "LeftLowerArm")
+                    Connect(Skeleton.T_RA, "UpperTorso", "RightUpperArm")
+                    Connect(Skeleton.RA_RH, "RightUpperArm", "RightLowerArm")
+                    Connect(Skeleton.T_LL, "LowerTorso", "LeftUpperLeg")
+                    Connect(Skeleton.LL_LF, "LeftUpperLeg", "LeftLowerLeg")
+                    Connect(Skeleton.T_RL, "LowerTorso", "RightUpperLeg")
+                    Connect(Skeleton.RL_RF, "RightUpperLeg", "RightLowerLeg")
+                else
+                    for _, l in pairs(Skeleton) do l.Visible = false end
+                end
             else
-                Line.Visible = false; Box.Visible = false; Name.Visible = false
+                Box.Visible = false; Line.Visible = false; Name.Visible = false
+                for _, l in pairs(Skeleton) do l.Visible = false end
             end
         else
-            Line.Visible = false; Box.Visible = false; Name.Visible = false
+            Box.Visible = false; Line.Visible = false; Name.Visible = false
+            for _, l in pairs(Skeleton) do l.Visible = false end
         end
     end)
 end
 
--- Tự động chạy cho người chơi mới
 for _, v in pairs(Players:GetPlayers()) do ApplyESP(v) end
 Players.PlayerAdded:Connect(ApplyESP)
 
--- GIAO DIỆN CHÍNH
+-- GIAO DIỆN RAYFIELD
 local Window = Rayfield:CreateWindow({
-   Name = "NgoTran Mods v5.1 | Online",
+   Name = "NgoTran Mods v5.0.1 | TUDEPTRAI",
    LoadingTitle = "Bypass Active...",
-   LoadingSubtitle = "by NgoTran",
+   LoadingSubtitle = "Status: Undetected",
 })
 
--- 1. PLAYER
+-- TAB PLAYER
 local Tab1 = Window:CreateTab("PLAYER", 4483362458)
 Tab1:CreateToggle({Name = "Enable ESP", CurrentValue = false, Callback = function(v) _G.Settings.EnableESP = v end})
 Tab1:CreateToggle({Name = "Line ESP", CurrentValue = false, Callback = function(v) _G.Settings.LineESP = v end})
 Tab1:CreateToggle({Name = "Box ESP", CurrentValue = false, Callback = function(v) _G.Settings.BoxESP = v end})
-Tab1:CreateToggle({Name = "Skeleton ESP (Visual only)", CurrentValue = false, Callback = function(v) end})
-Tab1:CreateSlider({Name = "Fix Esp", Range = {-100, 100}, Increment = 1, CurrentValue = 0, Callback = function(v) _G.Settings.FixEsp = v end})
+Tab1:CreateToggle({Name = "Skeleton ESP", CurrentValue = false, Callback = function(v) _G.Settings.SkeletonESP = v end})
+Tab1:CreateSlider({Name = "Fix Esp", Range = {-50, 50}, Increment = 1, CurrentValue = 0, Callback = function(v) _G.Settings.FixEsp = v end})
 
--- 2. VISUAL
+-- TAB VISUAL
 local Tab2 = Window:CreateTab("VISUAL", 4483362458)
 Tab2:CreateToggle({Name = "Name ESP", CurrentValue = false, Callback = function(v) _G.Settings.NameESP = v end})
 Tab2:CreateToggle({Name = "Show FOV", CurrentValue = false, Callback = function(v) _G.Settings.ShowFOV = v end})
-Tab2:CreateSlider({Name = "Fov Direction (Size)", Range = {50, 500}, Increment = 10, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
+Tab2:CreateSlider({Name = "Fov Direction", Range = {50, 500}, Increment = 5, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
 
--- 3. AIMBOT
+-- TAB AIMBOT
 local Tab3 = Window:CreateTab("AIMBOT", 4483362458)
-Tab3:CreateSection("AIM CONFIG")
-Tab3:CreateSlider({Name = "FOV Radius", Range = {0, 360}, Increment = 1, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
-Tab3:CreateSlider({Name = "Headshot Rate", Range = {0, 100}, Increment = 1, CurrentValue = 100, Callback = function(v) end})
+Tab3:CreateSlider({Name = "FOV Radius", Range = {0, 500}, Increment = 1, CurrentValue = 150, Callback = function(v) _G.Settings.FOVRadius = v end})
+Tab3:CreateDropdown({Name = "Target Region", Options = {"Head", "Neck", "Body"}, CurrentValue = "Head", Callback = function(v) _G.Settings.TargetRegion = v end})
 
-Tab3:CreateSection("AIM MODE")
-Tab3:CreateDropdown({Name = "Aim Mode", Options = {"Silent Aim", "Legit Aim"}, CurrentValue = "Silent Aim", Callback = function(v) end})
-Tab3:CreateToggle({Name = "Aimbot", CurrentValue = false, Callback = function(v) _G.Settings.Aimbot = v end})
-Tab3:CreateToggle({Name = "Aim Magnet", CurrentValue = false, Callback = function(v) _G.Settings.AimMagnet = v end})
-
-Tab3:CreateSection("TARGET REGION")
-Tab3:CreateDropdown({Name = "Target", Options = {"Head", "Neck", "Body"}, CurrentValue = "Head", Callback = function(v) _G.Settings.TargetRegion = v end})
-
--- 5. CONFIG
+-- TAB CONFIG
 local Tab5 = Window:CreateTab("CONFIG", 4483362458)
-Tab5:CreateLabel("Author: NgoTran")
-Tab5:CreateLabel("Version: 5.1")
-Tab5:CreateLabel("Status: Undetected")
-Tab5:CreateKeybind({Name = "Ẩn/Hiện Menu", CurrentKeybind = "RightControl", Callback = function() end})
+Tab5:CreateParagraph({Title = "System Status", Content = "Expiry: Lifetime\nVIP: OK\nVersion: 5.0.1\nAuthor: TUDEPTRAI\nStatus: Undetected"})
 
-Rayfield:Notify({Title = "Kích hoạt thành công", Content = "Script NgoTran Mods đã sẵn sàng!", Duration = 5})
+Rayfield:Notify({Title = "Xong!", Content = "Script đã nạp 100% tác dụng.", Duration = 5})
