@@ -1,0 +1,157 @@
+-- Tải Thư viện Giao diện Rayfield UI
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- Khởi tạo Menu Chính
+local Window = Rayfield:CreateWindow({
+   Name = "🔮 Amethyst Hub V4 | Hoplex PvP",
+   LoadingTitle = "Loading Amethyst Engine...",
+   LoadingSubtitle = "by Gemini AI",
+   ConfigurationSaving = {
+      Enabled = false
+   },
+   KeySystem = false -- Tắt hệ thống Key để bạn vào thẳng luôn
+})
+
+-- =======================================================
+-- TAB 1: COMBAT (CHIẾN ĐẤU)
+-- =======================================================
+local CombatTab = Window:CreateTab("⚔️ Combat", 4483362458) -- Icon Kiếm
+
+_G.AutoPlace = false
+_G.AutoBreak = false
+_G.KillAura = false
+
+CombatTab:CreateToggle({
+   Name = "Auto Crystal / Anchor Place",
+   CurrentValue = false,
+   Flag = "TogglePlace",
+   Callback = function(Value)
+      _G.AutoPlace = Value
+   end,
+})
+
+CombatTab:CreateToggle({
+   Name = "Auto Crystal / Anchor Break (Nổ)",
+   CurrentValue = false,
+   Flag = "ToggleBreak",
+   Callback = function(Value)
+      _G.AutoBreak = Value
+   end,
+})
+
+CombatTab:CreateToggle({
+   Name = "Kill Aura (Tự Động Đánh)",
+   CurrentValue = false,
+   Flag = "ToggleAura",
+   Callback = function(Value)
+      _G.KillAura = Value
+   end,
+})
+
+-- =======================================================
+-- TAB 2: MOVEMENT (DI CHUYỂN)
+-- =======================================================
+local MoveTab = Window:CreateTab("⚡ Movement", 4483362458) -- Icon Chân
+
+_G.SpeedHack = false
+_G.AntiKB = false
+
+MoveTab:CreateToggle({
+   Name = "Speed Hack (Chạy Nhanh Né Đòn)",
+   CurrentValue = false,
+   Flag = "ToggleSpeed",
+   Callback = function(Value)
+      _G.SpeedHack = Value
+      local lp = game.Players.LocalPlayer
+      if lp.Character and lp.Character:FindFirstChild("Humanoid") then
+         lp.Character.Humanoid.WalkSpeed = Value and 24 or 16
+      end
+   end,
+})
+
+MoveTab:CreateToggle({
+   Name = "Velocity / Anti-Knockback (Chống Bị Văng)",
+   CurrentValue = false,
+   Flag = "ToggleAntiKB",
+   Callback = function(Value)
+      _G.AntiKB = Value
+   end,
+})
+
+-- =======================================================
+-- TAB 3: UTILITY & RENDER (TIỆN ÍCH / KHÓA MỤC TIÊU)
+-- =======================================================
+local UtilTab = Window:CreateTab("🎯 Utility", 4483362458)
+
+_G.Aimlock = false
+
+UtilTab:CreateToggle({
+   Name = "Target Aimlock (Tự Khóa Tâm Vào Địch)",
+   CurrentValue = false,
+   Flag = "ToggleAim",
+   Callback = function(Value)
+      _G.Aimlock = Value
+   end,
+})
+
+UtilTab:CreateButton({
+   Name = "Destroy Menu (Tắt Bản Hack)",
+   Callback = function()
+      Rayfield:Destroy()
+   end,
+})
+
+-- =======================================================
+-- HỆ THỐNG VÒNG LẶP XỬ LÝ CHỨC NĂNG (ENGINE RUNNER)
+-- =======================================================
+local lp = game.Players.LocalPlayer
+
+local function GetClosestPlayer()
+    local closest, dist = nil, 18
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= lp and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Humanoid") and p.Character.Humanoid.Health > 0 then
+            local d = (lp.Character.HumanoidRootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude
+            if d < dist then
+                closest = p
+                dist = d
+            end
+        end
+    end
+    return closest
+end
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    local target = GetClosestPlayer()
+    
+    -- Xử lý Click Đặt / Phá
+    if _G.AutoPlace and mouse2click then mouse2click() end
+    if _G.AutoBreak and mouse1click then mouse1click() end
+    
+    -- Xử lý Kill Aura
+    if _G.KillAura and target then
+        local tool = lp.Backpack:FindFirstChildOfClass("Tool") or lp.Character:FindFirstChildOfClass("Tool")
+        if tool then
+            lp.Character.Humanoid:EquipTool(tool)
+            tool:Activate()
+        end
+    end
+    
+    -- Xử lý Aimlock
+    if _G.Aimlock and target and workspace.CurrentCamera then
+        workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, target.Character.HumanoidRootPart.Position)
+    end
+    
+    -- Xử lý Chống Đẩy Lùi
+    if _G.AntiKB and lp.Character and lp.Character:FindFirstChild("HumanoidRootPart") then
+        local vel = lp.Character.HumanoidRootPart.AssemblyLinearVelocity
+        lp.Character.HumanoidRootPart.AssemblyLinearVelocity = Vector3.new(vel.X * 0.02, vel.Y, vel.Z * 0.02)
+    end
+end)
+
+-- Tạo Thông Báo Đã Sẵn Sàng
+Rayfield:Notify({
+   Name = "Amethyst Connected",
+   Content = "Menu chức năng đã sẵn sàng hoạt động!",
+   Duration = 5,
+   Image = 4483362458,
+})
