@@ -1,0 +1,64 @@
+-- Khởi tạo các dịch vụ cơ bản của Roblox
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Cấu hình các thông số cho Aimbot
+local AimbotEnabled = true -- Chuyển thành false để tắt
+local TeamCheck = true     -- Bật true để không bắn đồng đội (nếu game có chia đội)
+local TargetPart = "Head"   -- Bộ phận nhắm tới (ví dụ: "Head" hoặc "Torso")
+
+-- Hàm tìm kiếm người chơi gần tâm màn hình nhất
+local function GetClosestPlayerToCursor()
+    local ClosestPlayer = nil
+    local ShortestDistance = math.huge -- Khoảng cách ban đầu đặt ở vô cực
+
+    for _, Player in pairs(Players:GetPlayers()) do
+        if Player ~= LocalPlayer then
+            -- Kiểm tra xem mục tiêu còn sống và có đầy đủ bộ phận không
+            local Character = Player.Character
+            if Character and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
+                local Part = Character:FindFirstChild(TargetPart)
+                
+                -- Kiểm tra điều kiện đồng đội nếu tính năng TeamCheck bật
+                local IsEnemy = true
+                if TeamCheck and Player.Team == LocalPlayer.Team then
+                    IsEnemy = false
+                end
+
+                if Part and IsEnemy then
+                    -- Chuyển đổi tọa độ 3D của mục tiêu sang tọa độ 2D trên màn hình
+                    local Vector, OnScreen = Camera:WorldToViewportPoint(Part.Position)
+                    
+                    if OnScreen then
+                        -- Tính khoảng cách từ vị trí mục tiêu trên màn hình đến tâm chuột
+                        local MousePosition = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+                        local ScreenPosition = Vector2.new(Vector.X, Vector.Y)
+                        local Distance = (ScreenPosition - MousePosition).Magnitude
+
+                        -- Cập nhật mục tiêu nếu tìm thấy người chơi ở khoảng cách gần hơn
+                        if Distance < ShortestDistance then
+                            ShortestDistance = Distance
+                            ClosestPlayer = Player
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return ClosestPlayer
+end
+
+-- Vòng lặp liên tục cập nhật góc xoay của Camera theo thời gian thực (RenderStepped)
+RunService.RenderStepped:Connect(function()
+    if AimbotEnabled then
+        local TargetPlayer = GetClosestPlayerToCursor()
+        if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild(TargetPart) then
+            local TargetPosition = TargetPlayer.Character[TargetPart].Position
+            
+            -- Thay đổi góc nhìn của Camera hướng thẳng vào bộ phận mục tiêu
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, TargetPosition)
+        end
+    end
+end)
