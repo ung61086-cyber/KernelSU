@@ -1,0 +1,435 @@
+--[[
+    UNIVERSAL ULTIMATE SCRIPT (MOBILE & PC)
+    - Hệ thống Boost FPS cực mạnh theo cấp số nhân.
+    - Clone Tool độc lập không cần giao tiếp Server.
+    - Aimbot khóa cứng Camera vào Head đối thủ (Sửa lỗi không xoay camera).
+    - Vẽ ESP Khung chữ nhật màu trắng & Vòng tròn tâm FOV.
+    - Menu GUI kéo thả mượt mà cho cả Delta Mobile và Executor PC.
+--]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Tránh lỗi khi người chơi chưa tải xong PlayerGui
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Tìm vị trí lưu trữ GUI an toàn (CoreGui cho Executor xịn, PlayerGui cho mobile/bình thường)
+local TargetParent = nil
+local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
+if success and coreGui then
+    TargetParent = coreGui
+else
+    TargetParent = PlayerGui
+end
+
+-- Tránh tạo trùng GUI khi execute lại script nhiều lần
+local existingGui = TargetParent:FindFirstChild("UltimateCombinedGui")
+if existingGui then existingGui:Destroy() end
+
+----------------------------------------------------------------
+-- [1] KHỞI TẠO CẤU HÌNH & BIẾN TRẠNG THÁI
+----------------------------------------------------------------
+local AimEnabled = true
+local EspEnabled = true
+local FovEnabled = true
+local boostLevel = 0
+
+local FOV_RADIUS = 150
+local ESP_COLOR = Color3.fromRGB(255, 255, 255)
+
+----------------------------------------------------------------
+-- [2] VẼ VÒNG TRÒN TÂM FOV (DRAWING API)
+----------------------------------------------------------------
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+FOVCircle.Radius = FOV_RADIUS
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Thickness = 1.5
+FOVCircle.Filled = false
+FOVCircle.Visible = FovEnabled
+
+----------------------------------------------------------------
+-- [3] THIẾT LẬP MENU ĐIỀU KHIỂN CHÍNH (GUI)
+----------------------------------------------------------------
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "UltimateCombinedGui"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = TargetParent
+
+-- Khung Menu điều khiển chính
+local MainMenu = Instance.new("Frame")
+MainMenu.Name = "MainMenu"
+MainMenu.Size = UDim2.new(0, 160, 0, 260)
+MainMenu.Position = UDim2.new(0.05, 0, 0.3, 0)
+MainMenu.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+MainMenu.BorderSizePixel = 0
+MainMenu.Active = true
+MainMenu.Parent = ScreenGui
+
+local MenuCorner = Instance.new("UICorner")
+MenuCorner.CornerRadius = UDim.new(0, 12)
+MenuCorner.Parent = MainMenu
+
+-- Viền Neon phát sáng cho Menu
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Color = Color3.fromRGB(0, 255, 128)
+UIStroke.Thickness = 2
+UIStroke.Parent = MainMenu
+
+-- Tiêu đề của Menu
+local MenuTitle = Instance.new("TextLabel")
+MenuTitle.Size = UDim2.new(1, 0, 0, 35)
+MenuTitle.BackgroundTransparency = 1
+MenuTitle.Text = "MENU PRO"
+MenuTitle.TextColor3 = Color3.fromRGB(0, 255, 128)
+MenuTitle.Font = Enum.Font.GothamBold
+MenuTitle.TextSize = 13
+MenuTitle.Parent = MainMenu
+
+-- Nút Boost FPS & Clone Tool tích hợp (Nút LED hình vuông bo góc phía trên)
+local BoostButton = Instance.new("TextButton")
+BoostButton.Name = "BoostButton"
+BoostButton.Size = UDim2.new(0.9, 0, 0, 50)
+BoostButton.Position = UDim2.new(0.05, 0, 0, 40)
+BoostButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+BoostButton.Text = "BOOST x0\n& CLONE"
+BoostButton.TextColor3 = Color3.fromRGB(0, 255, 128)
+BoostButton.Font = Enum.Font.GothamBold
+BoostButton.TextSize = 12
+BoostButton.Parent = MainMenu
+
+local BoostCorner = Instance.new("UICorner")
+BoostCorner.CornerRadius = UDim.new(0, 8)
+BoostCorner.Parent = BoostButton
+
+-- Tạo Label thông báo trạng thái (nhấp nháy ở phía dưới màn hình)
+local InfoLabel = Instance.new("TextLabel")
+InfoLabel.Name = "InfoLabel"
+InfoLabel.Size = UDim2.new(0, 220, 0, 35)
+InfoLabel.Position = UDim2.new(0.5, -110, 0.85, 0)
+InfoLabel.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+InfoLabel.BackgroundTransparency = 0.2
+InfoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+InfoLabel.Font = Enum.Font.GothamSemibold
+InfoLabel.TextSize = 13
+InfoLabel.Visible = false
+InfoLabel.Parent = ScreenGui
+
+local LabelCorner = Instance.new("UICorner")
+LabelCorner.CornerRadius = UDim.new(0, 8)
+LabelCorner.Parent = InfoLabel
+
+local msgThread = nil
+local function showNotification(text, color)
+    if msgThread then task.cancel(msgThread) end
+    InfoLabel.Text = text
+    InfoLabel.TextColor3 = color
+    InfoLabel.Visible = true
+    msgThread = task.delay(2, function()
+        InfoLabel.Visible = false
+    end)
+end
+
+-- Hàm hỗ trợ tạo các nút bật/tắt chức năng nhanh
+local function createToggleButton(text, position, defaultState, callback)
+    local button = Instance.new("TextButton")
+    button.Size = UDim2.new(0.9, 0, 0, 35)
+    button.Position = position
+    button.Font = Enum.Font.GothamBold
+    button.TextSize = 11
+    button.Parent = MainMenu
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = button
+
+    local state = defaultState
+    local function updateAppearance()
+        if state then
+            button.BackgroundColor3 = Color3.fromRGB(0, 180, 90)
+            button.Text = text .. ": BẬT"
+            button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        else
+            button.BackgroundColor3 = Color3.fromRGB(130, 40, 40)
+            button.Text = text .. ": TẮT"
+            button.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+    end
+
+    updateAppearance()
+
+    button.MouseButton1Click:Connect(function()
+        state = not state
+        updateAppearance()
+        callback(state)
+    end)
+end
+
+-- Tạo 3 nút Bật/Tắt bên dưới Menu
+createToggleButton("AIMBOT", UDim2.new(0.05, 0, 0, 105), AimEnabled, function(val)
+    AimEnabled = val
+end)
+
+createToggleButton("ESP KHUNG", UDim2.new(0.05, 0, 0, 150), EspEnabled, function(val)
+    EspEnabled = val
+end)
+
+createToggleButton("TÂM FOV", UDim2.new(0.05, 0, 0, 195), FovEnabled, function(val)
+    FovEnabled = val
+    FOVCircle.Visible = val
+end)
+
+----------------------------------------------------------------
+-- [4] HỆ THỐNG KÉO THẢ MENU (KÉO MƯỢT TRÊN PC & MOBILE)
+----------------------------------------------------------------
+local dragging = false
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainMenu.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainMenu.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainMenu.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainMenu.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        update(input)
+    end
+end)
+
+----------------------------------------------------------------
+-- [5] TÍNH NĂNG CLONE TOOL ĐỘC LẬP
+----------------------------------------------------------------
+local function attemptToolClone()
+    local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    local activeTool = character:FindFirstChildOfClass("Tool")
+    
+    if not activeTool then
+        showNotification("Không cầm Tool trên tay!", Color3.fromRGB(255, 80, 80))
+        return
+    end
+    
+    local cloneSuccess, clonedTool = pcall(function()
+        return activeTool:Clone()
+    end)
+    
+    if cloneSuccess and clonedTool then
+        local backpack = LocalPlayer:FindFirstChildOfClass("Backpack")
+        if backpack then
+            clonedTool.Parent = backpack
+            showNotification("Clone thành công!", Color3.fromRGB(80, 255, 80))
+        else
+            showNotification("Lỗi: Không tìm thấy Backpack!", Color3.fromRGB(255, 80, 80))
+        end
+    else
+        showNotification("Clone thất bại!", Color3.fromRGB(255, 80, 80))
+    end
+end
+
+----------------------------------------------------------------
+-- [6] TỐI ƯU HÓA HOẠT ẢNH & ĐỒ HỌA LŨY TIẾN (BOOST FPS CẤP SỐ NHÂN)
+----------------------------------------------------------------
+local function cleanObject(obj)
+    if obj:IsA("Decal") or obj:IsA("Texture") then
+        obj:Destroy()
+    elseif obj:IsA("SpecialMesh") then
+        obj.TextureId = ""
+    elseif obj:IsA("MeshPart") then
+        obj.TextureID = ""
+        if boostLevel >= 2 then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+        end
+    elseif obj:IsA("BasePart") then
+        obj.Material = Enum.Material.SmoothPlastic
+        obj.Reflectance = 0
+        obj.CastShadow = false
+    elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+        obj.Enabled = false
+        if boostLevel >= 3 then
+            obj:Destroy()
+        end
+    elseif obj:IsA("Light") and boostLevel >= 2 then
+        obj.Enabled = false
+    end
+end
+
+local function applyExponentialBoost()
+    boostLevel = boostLevel + 1
+    
+    -- Thực hiện quét toàn bộ Workspace để dọn dẹp
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
+        cleanObject(descendant)
+    end
+
+    -- Khởi tạo lắng nghe nếu ở level 1
+    if boostLevel == 1 then
+        Workspace.DescendantAdded:Connect(function(descendant)
+            cleanObject(descendant)
+        end)
+    end
+    
+    -- Tăng cường tối ưu luồng game ở cấp độ cao
+    if boostLevel >= 2 then
+        sethiddenproperty = sethiddenproperty or function(...) end
+        pcall(function()
+            sethiddenproperty(workspace, "StreamingEnabled", true)
+            sethiddenproperty(Lighting, "Technology", Enum.Technology.Compatibility)
+        end)
+    end
+end
+
+-- Tối ưu hóa cài đặt đồ họa tổng quan của Roblox ngay khi vừa mở game
+local function initGlobalOptimization()
+    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 9e9
+    Lighting.Brightness = 1
+    
+    for _, service in ipairs({game:GetService("MaterialService"), Lighting}) do
+        for _, child in ipairs(service:GetChildren()) do
+            if child:IsA("PostEffect") or child:IsA("Atmosphere") or child:IsA("Clouds") then
+                child.Enabled = false
+            end
+        end
+    end
+end
+task.spawn(initGlobalOptimization)
+
+----------------------------------------------------------------
+-- [7] XỬ LÝ SỰ KIỆN CLICK NÚT BOOST / CLONE
+----------------------------------------------------------------
+BoostButton.MouseButton1Click:Connect(function()
+    applyExponentialBoost()
+    attemptToolClone()
+    BoostButton.Text = "BOOST x" .. tostring(boostLevel) .. "\n& CLONE"
+end)
+
+----------------------------------------------------------------
+-- [8] HỆ THỐNG AIMBOT XOAY MÀN HÌNH CHUẨN XÁC
+----------------------------------------------------------------
+local function getClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = FOV_RADIUS
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            -- Chỉ ngắm vào người chơi còn sống
+            if humanoid and humanoid.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(player.Character.Head.Position)
+                if onScreen then
+                    local distance = (Vector2.new(pos.X, pos.Y) - FOVCircle.Position).Magnitude
+                    if distance < shortestDistance then
+                        closestPlayer = player
+                        shortestDistance = distance
+                    end
+                end
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Vòng lặp khóa camera mượt mà
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    
+    if AimEnabled then
+        local target = getClosestPlayer()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local headPos = target.Character.Head.Position
+            -- Khóa camera thẳng vào đầu mục tiêu một cách trực tiếp và chính xác
+            Camera.CFrame = CFrame.lookAt(Camera.CFrame.Position, headPos)
+        end
+    end
+end)
+
+----------------------------------------------------------------
+-- [9] HỆ THỐNG ĐỊNH VỊ KHUNG ESP MÀU TRẮNG
+----------------------------------------------------------------
+local espObjects = {}
+
+local function createESP(player)
+    local box = Drawing.new("Square")
+    box.Visible = false
+    box.Color = ESP_COLOR
+    box.Thickness = 1.5
+    box.Filled = false
+    espObjects[player] = box
+end
+
+Players.PlayerRemoving:Connect(function(player)
+    if espObjects[player] then
+        espObjects[player]:Remove()
+        espObjects[player] = nil
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local char = player.Character
+            local root = char and char:FindFirstChild("HumanoidRootPart")
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            
+            if root and hum and hum.Health > 0 then
+                if not espObjects[player] then
+                    createESP(player)
+                end
+                
+                local box = espObjects[player]
+                if EspEnabled then
+                    local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
+                    
+                    if onScreen then
+                        -- Tự động điều chỉnh kích thước khung theo khoảng cách xa gần
+                        local distance = (Camera.CFrame.Position - root.Position).Magnitude
+                        local sizeX = math.clamp(1000 / distance, 10, 150)
+                        local sizeY = sizeX * 1.5
+                        
+                        box.Size = Vector2.new(sizeX, sizeY)
+                        box.Position = Vector2.new(pos.X - (sizeX / 2), pos.Y - (sizeY / 2))
+                        box.Visible = true
+                    else
+                        box.Visible = false
+                    end
+                else
+                    box.Visible = false
+                end
+            else
+                if espObjects[player] then
+                    espObjects[player].Visible = false
+                end
+            end
+        end
+    end
+end)
+
+-- Khởi động thành công!
+showNotification("Script Đã Kết Hợp Thành Công!", Color3.fromRGB(0, 255, 128))
