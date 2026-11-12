@@ -1,11 +1,13 @@
 
---==================================================
--- PRESTIGE V9 | MOBILE EDITION
--- Legitimate client-side helpers
--- Put in a LocalScript / your own Roblox experience
---==================================================
+--================================================
+-- PRESTIGE V9 | UNSTABLE FFA
+-- Rebuilt mobile GUI
+-- LocalScript / supported client environment
+--================================================
 
-if not game:IsLoaded() then game.Loaded:Wait() end
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -13,347 +15,486 @@ local RunService = game:GetService("RunService")
 local Stats = game:GetService("Stats")
 
 local LP = Players.LocalPlayer
-local Purple = Color3.fromRGB(160, 85, 255)
-local Dark = Color3.fromRGB(13, 12, 19)
-local Panel = Color3.fromRGB(25, 22, 34)
-local White = Color3.fromRGB(245, 240, 255)
-local Muted = Color3.fromRGB(160, 150, 180)
+local PG = LP:WaitForChild("PlayerGui")
 
-local old = LP.PlayerGui:FindFirstChild("PRESTIGE_V9")
-if old then old:Destroy() end
+local OLD = PG:FindFirstChild("PRESTIGE_V9")
+if OLD then OLD:Destroy() end
 
-local gui = Instance.new("ScreenGui")
-gui.Name = "PRESTIGE_V9"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = false
-gui.Parent = LP:WaitForChild("PlayerGui")
+local C = {
+    BG = Color3.fromRGB(13,12,19),
+    PANEL = Color3.fromRGB(25,22,34),
+    PURPLE = Color3.fromRGB(158,85,255),
+    WHITE = Color3.fromRGB(245,240,255),
+    GREY = Color3.fromRGB(145,135,160),
+    GREEN = Color3.fromRGB(85,220,155)
+}
 
-local function make(class, props, parent)
+local function New(class,props,parent)
     local o = Instance.new(class)
-    for k,v in pairs(props) do o[k] = v end
+    for k,v in pairs(props) do
+        o[k] = v
+    end
     o.Parent = parent
     return o
 end
 
-local main = make("Frame", {
-    Size = UDim2.fromOffset(340, 440),
-    Position = UDim2.new(.5, -170, .5, -220),
-    BackgroundColor3 = Dark,
-    BorderSizePixel = 0,
-    ClipsDescendants = true
-}, gui)
-make("UICorner", {CornerRadius=UDim.new(0,14)}, main)
-make("UIStroke", {Color=Purple, Thickness=1.6}, main)
+local GUI = New("ScreenGui",{
+    Name="PRESTIGE_V9",
+    ResetOnSpawn=false,
+    DisplayOrder=999,
+    ZIndexBehavior=Enum.ZIndexBehavior.Sibling
+},PG)
 
--- Header
-local header = make("Frame", {
-    Size=UDim2.new(1,0,0,58),
-    BackgroundColor3=Panel,
+local Main = New("Frame",{
+    Size=UDim2.fromOffset(350,440),
+    Position=UDim2.new(.5,-175,.5,-220),
+    BackgroundColor3=C.BG,
     BorderSizePixel=0
-}, main)
-make("UICorner", {CornerRadius=UDim.new(0,14)}, header)
+},GUI)
 
-make("TextLabel", {
-    Position=UDim2.fromOffset(14,5),
-    Size=UDim2.new(1,-60,0,30),
+New("UICorner",{CornerRadius=UDim.new(0,14)},Main)
+New("UIStroke",{Color=C.PURPLE,Thickness=1.5},Main)
+
+-- HEADER
+local Header = New("Frame",{
+    Size=UDim2.new(1,0,0,65),
+    BackgroundColor3=C.PANEL,
+    BorderSizePixel=0
+},Main)
+New("UICorner",{CornerRadius=UDim.new(0,14)},Header)
+
+New("TextLabel",{
+    Position=UDim2.fromOffset(15,7),
+    Size=UDim2.new(1,-55,0,28),
     BackgroundTransparency=1,
     Text="✦ PRESTIGE V9",
-    TextColor3=White,
+    TextColor3=C.WHITE,
     Font=Enum.Font.GothamBlack,
-    TextSize=20,
+    TextSize=21,
     TextXAlignment=Enum.TextXAlignment.Left
-}, header)
+},Header)
 
-make("TextLabel", {
-    Position=UDim2.fromOffset(15,34),
-    Size=UDim2.new(1,-30,0,15),
+New("TextLabel",{
+    Position=UDim2.fromOffset(16,36),
+    Size=UDim2.new(1,-25,0,16),
     BackgroundTransparency=1,
-    Text="UNSTABLE FFA  •  MOBILE CLIENT",
-    TextColor3=Purple,
+    Text="UNSTABLE FFA  |  MOBILE EDITION",
+    TextColor3=C.PURPLE,
     Font=Enum.Font.GothamBold,
     TextSize=9,
     TextXAlignment=Enum.TextXAlignment.Left
-}, header)
+},Header)
 
--- Drag
-local dragging, dragStart, startPos
-header.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = main.Position
+-- DRAG
+local drag,dragStart,startPos
+Header.InputBegan:Connect(function(input)
+    if input.UserInputType==Enum.UserInputType.MouseButton1
+    or input.UserInputType==Enum.UserInputType.Touch then
+        drag=true
+        dragStart=input.Position
+        startPos=Main.Position
     end
 end)
 
 UIS.InputChanged:Connect(function(input)
-    if dragging and (
-        input.UserInputType == Enum.UserInputType.MouseMovement
-        or input.UserInputType == Enum.UserInputType.Touch
+    if drag and (
+        input.UserInputType==Enum.UserInputType.MouseMovement
+        or input.UserInputType==Enum.UserInputType.Touch
     ) then
-        local d = input.Position - dragStart
-        main.Position = UDim2.new(
-            startPos.X.Scale, startPos.X.Offset+d.X,
-            startPos.Y.Scale, startPos.Y.Offset+d.Y
+        local d=input.Position-dragStart
+        Main.Position=UDim2.new(
+            startPos.X.Scale,startPos.X.Offset+d.X,
+            startPos.Y.Scale,startPos.Y.Offset+d.Y
         )
     end
 end)
 
 UIS.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1
-    or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
+    if input.UserInputType==Enum.UserInputType.MouseButton1
+    or input.UserInputType==Enum.UserInputType.Touch then
+        drag=false
     end
 end)
 
--- Sidebar
-local sidebar = make("Frame", {
-    Position=UDim2.fromOffset(10,70),
-    Size=UDim2.new(0,94,1,-82),
-    BackgroundColor3=Panel,
-    BorderSizePixel=0
-}, main)
-make("UICorner", {CornerRadius=UDim.new(0,9)}, sidebar)
+-- CLOSE
+local Close=New("TextButton",{
+    Position=UDim2.new(1,-43,0,12),
+    Size=UDim2.fromOffset(30,30),
+    BackgroundColor3=Color3.fromRGB(75,35,100),
+    Text="×",
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=20
+},Header)
+New("UICorner",{CornerRadius=UDim.new(0,7)},Close)
 
-local sideLayout = make("UIListLayout", {
-    Padding=UDim.new(0,7),
-    HorizontalAlignment=Enum.HorizontalAlignment.Center,
-    SortOrder=Enum.SortOrder.LayoutOrder
-}, sidebar)
+-- REOPEN BUTTON
+local Reopen=New("TextButton",{
+    Position=UDim2.new(0,12,.5,0),
+    Size=UDim2.fromOffset(125,40),
+    BackgroundColor3=C.PANEL,
+    Text="✦ PRESTIGE V9",
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=11,
+    Visible=false
+},GUI)
+New("UICorner",{CornerRadius=UDim.new(0,9)},Reopen)
+New("UIStroke",{Color=C.PURPLE,Thickness=1.5},Reopen)
 
-local content = make("ScrollingFrame", {
-    Position=UDim2.fromOffset(113,70),
-    Size=UDim2.new(1,-123,1,-82),
-    BackgroundColor3=Panel,
-    BorderSizePixel=0,
-    ScrollBarThickness=3,
-    ScrollBarImageColor3=Purple,
-    CanvasSize=UDim2.new()
-}, main)
-make("UICorner", {CornerRadius=UDim.new(0,9)}, content)
-
-local list = make("UIListLayout", {
-    Padding=UDim.new(0,8),
-    SortOrder=Enum.SortOrder.LayoutOrder
-}, content)
-
-list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    content.CanvasSize = UDim2.fromOffset(0,list.AbsoluteContentSize.Y+12)
+Close.Activated:Connect(function()
+    Main.Visible=false
+    Reopen.Visible=true
 end)
 
-local pages = {}
-local currentPage
+Reopen.Activated:Connect(function()
+    Main.Visible=true
+    Reopen.Visible=false
+end)
 
-local function newPage(name)
-    local page = make("Frame", {
-        Name=name,
+-- SIDEBAR
+local Side=New("Frame",{
+    Position=UDim2.fromOffset(10,77),
+    Size=UDim2.new(0,95,1,-88),
+    BackgroundColor3=C.PANEL
+},Main)
+New("UICorner",{CornerRadius=UDim.new(0,9)},Side)
+
+New("UIListLayout",{
+    Padding=UDim.new(0,8),
+    HorizontalAlignment=Enum.HorizontalAlignment.Center
+},Side)
+
+-- CONTENT
+local Content=New("ScrollingFrame",{
+    Position=UDim2.fromOffset(115,77),
+    Size=UDim2.new(1,-125,1,-88),
+    BackgroundColor3=C.PANEL,
+    BorderSizePixel=0,
+    ScrollBarThickness=3,
+    ScrollBarImageColor3=C.PURPLE,
+    CanvasSize=UDim2.new()
+},Main)
+New("UICorner",{CornerRadius=UDim.new(0,9)},Content)
+
+local Pages={}
+local Current
+
+local function Page(name)
+    local p=New("Frame",{
         Size=UDim2.new(1,-12,0,0),
         AutomaticSize=Enum.AutomaticSize.Y,
         BackgroundTransparency=1,
         Visible=false
-    }, content)
-    local layout = make("UIListLayout", {
+    },Content)
+
+    New("UIListLayout",{
         Padding=UDim.new(0,8),
         SortOrder=Enum.SortOrder.LayoutOrder
-    }, page)
-    pages[name] = page
-    return page
+    },p)
+
+    Pages[name]=p
+    return p
 end
 
-local function showPage(name)
-    for n,p in pairs(pages) do p.Visible = n==name end
-    currentPage = name
+local function Show(name)
+    for n,p in pairs(Pages) do
+        p.Visible=(n==name)
+    end
+    Current=name
+    Content.CanvasPosition=Vector2.zero
 end
 
-local function tab(name, icon)
-    local b = make("TextButton", {
-        Size=UDim2.new(1,-10,0,42),
-        BackgroundColor3=Dark,
+local function MakeTab(name,icon)
+    local b=New("TextButton",{
+        Size=UDim2.new(1,-10,0,44),
+        BackgroundColor3=C.BG,
         Text=icon.."\n"..name,
-        TextColor3=White,
+        TextColor3=C.WHITE,
         Font=Enum.Font.GothamBold,
-        TextSize=10,
-        AutoButtonColor=true
-    }, sidebar)
-    make("UICorner", {CornerRadius=UDim.new(0,7)}, b)
-    b.Activated:Connect(function() showPage(name) end)
+        TextSize=10
+    },Side)
+    New("UICorner",{CornerRadius=UDim.new(0,7)},b)
+    b.Activated:Connect(function() Show(name) end)
 end
 
-local combat = newPage("Combat")
-local playerPage = newPage("Player")
-local visual = newPage("Visual")
-local settings = newPage("Settings")
+local Combat=Page("Combat")
+local PlayerPage=Page("Player")
+local Visual=Page("Visual")
+local Settings=Page("Settings")
 
-tab("Combat","⚔")
-tab("Player","◈")
-tab("Visual","◎")
-tab("Settings","⚙")
+MakeTab("Combat","⚔")
+MakeTab("Player","◈")
+MakeTab("Visual","◎")
+MakeTab("Settings","⚙")
 
-local function section(parent, text)
-    return make("TextLabel", {
-        Size=UDim2.new(1,0,0,25),
+local function Section(parent,title)
+    New("TextLabel",{
+        Size=UDim2.new(1,0,0,26),
         BackgroundTransparency=1,
-        Text=text,
-        TextColor3=Purple,
+        Text=title,
+        TextColor3=C.PURPLE,
         Font=Enum.Font.GothamBlack,
         TextSize=12,
         TextXAlignment=Enum.TextXAlignment.Left
-    }, parent)
+    },parent)
 end
 
-local function row(parent, text)
-    local f = make("Frame", {
-        Size=UDim2.new(1,0,0,38),
-        BackgroundColor3=Dark,
-        BorderSizePixel=0
-    }, parent)
-    make("UICorner", {CornerRadius=UDim.new(0,7)}, f)
-    make("TextLabel", {
-        Position=UDim2.fromOffset(10,0),
+local function Action(parent,title,callback)
+    local f=New("Frame",{
+        Size=UDim2.new(1,0,0,39),
+        BackgroundColor3=C.BG
+    },parent)
+    New("UICorner",{CornerRadius=UDim.new(0,7)},f)
+
+    New("TextLabel",{
+        Position=UDim2.fromOffset(9,0),
         Size=UDim2.new(1,-75,1,0),
         BackgroundTransparency=1,
-        Text=text,
-        TextColor3=White,
+        Text=title,
+        TextColor3=C.WHITE,
         Font=Enum.Font.GothamMedium,
         TextSize=11,
         TextXAlignment=Enum.TextXAlignment.Left
-    }, f)
-    return f
-end
+    },f)
 
-local function button(parent, text, callback)
-    local f = row(parent,text)
-    local b = make("TextButton", {
-        AnchorPoint=Vector2.new(1,.5),
-        Position=UDim2.new(1,-5,.5,0),
-        Size=UDim2.fromOffset(64,27),
-        BackgroundColor3=Purple,
+    local b=New("TextButton",{
+        Position=UDim2.new(1,-66,.5,-13),
+        Size=UDim2.fromOffset(60,26),
+        BackgroundColor3=C.PURPLE,
         Text="USE",
-        TextColor3=White,
+        TextColor3=C.WHITE,
         Font=Enum.Font.GothamBold,
         TextSize=10
-    }, f)
-    make("UICorner", {CornerRadius=UDim.new(0,6)}, b)
+    },f)
+    New("UICorner",{CornerRadius=UDim.new(0,6)},b)
     b.Activated:Connect(callback)
     return b
 end
 
-local toggles = {}
+local function Toggle(parent,title,callback)
+    local f=New("Frame",{
+        Size=UDim2.new(1,0,0,39),
+        BackgroundColor3=C.BG
+    },parent)
+    New("UICorner",{CornerRadius=UDim.new(0,7)},f)
 
-local function toggle(parent, name, default, callback)
-    local f = row(parent,name)
-    local state = default or false
-    local b = make("TextButton", {
-        AnchorPoint=Vector2.new(1,.5),
-        Position=UDim2.new(1,-5,.5,0),
-        Size=UDim2.fromOffset(48,25),
-        BackgroundColor3=state and Purple or Muted,
-        Text=state and "ON" or "OFF",
-        TextColor3=White,
-        Font=Enum.Font.GothamBold,
-        TextSize=10
-    }, f)
-    make("UICorner", {CornerRadius=UDim.new(1,0)}, b)
-    local function set(v)
-        state = v
-        b.Text = v and "ON" or "OFF"
-        b.BackgroundColor3 = v and Purple or Muted
-        if callback then callback(v) end
-    end
-    b.Activated:Connect(function() set(not state) end)
-    toggles[name] = set
-    return function() return state end
-end
-
-local function slider(parent, name, min, max, default, callback)
-    local f = make("Frame", {
-        Size=UDim2.new(1,0,0,56),
-        BackgroundColor3=Dark,
-        BorderSizePixel=0
-    }, parent)
-    make("UICorner", {CornerRadius=UDim.new(0,7)}, f)
-    local title = make("TextLabel", {
-        Position=UDim2.fromOffset(9,3),
-        Size=UDim2.new(1,-18,0,20),
+    New("TextLabel",{
+        Position=UDim2.fromOffset(9,0),
+        Size=UDim2.new(1,-70,1,0),
         BackgroundTransparency=1,
-        Text=name..": "..default,
-        TextColor3=White,
-        Font=Enum.Font.GothamBold,
+        Text=title,
+        TextColor3=C.WHITE,
+        Font=Enum.Font.GothamMedium,
         TextSize=11,
         TextXAlignment=Enum.TextXAlignment.Left
-    }, f)
-    local bar = make("TextButton", {
-        Position=UDim2.fromOffset(10,32),
-        Size=UDim2.new(1,-20,0,8),
-        BackgroundColor3=Muted,
-        Text=""
-    }, f)
-    make("UICorner", {CornerRadius=UDim.new(1,0)}, bar)
-    local fill = make("Frame", {
-        Size=UDim2.new((default-min)/(max-min),0,1,0),
-        BackgroundColor3=Purple,
-        BorderSizePixel=0
-    }, bar)
-    make("UICorner", {CornerRadius=UDim.new(1,0)}, fill)
+    },f)
 
-    local value = default
-    local function update(x)
-        local pct = math.clamp(x,0,1)
-        value = math.floor(min+pct*(max-min))
-        fill.Size = UDim2.new(pct,0,1,0)
-        title.Text = name..": "..value
-        if callback then callback(value) end
-    end
-    bar.Activated:Connect(function()
-        local mouseX = UIS:GetMouseLocation().X
-        update((mouseX-bar.AbsolutePosition.X)/bar.AbsoluteSize.X)
+    local state=false
+    local b=New("TextButton",{
+        Position=UDim2.new(1,-55,.5,-13),
+        Size=UDim2.fromOffset(48,26),
+        BackgroundColor3=C.GREY,
+        Text="OFF",
+        TextColor3=C.WHITE,
+        Font=Enum.Font.GothamBold,
+        TextSize=10
+    },f)
+    New("UICorner",{CornerRadius=UDim.new(1,0)},b)
+
+    b.Activated:Connect(function()
+        state=not state
+        b.Text=state and "ON" or "OFF"
+        b.BackgroundColor3=state and C.PURPLE or C.GREY
+        if callback then callback(state) end
     end)
-    return function() return value end
 end
 
 -- COMBAT
-section(combat,"COMBAT ASSIST")
+Section(Combat,"COMBAT")
 
-button(combat,"Mace Swap",function()
-    local char = LP.Character
-    local bag = LP:FindFirstChildOfClass("Backpack")
+Action(Combat,"Mace Swap",function()
+    local char=LP.Character
+    local bag=LP:FindFirstChildOfClass("Backpack")
     local mace
+
     for _,container in ipairs({char,bag}) do
         if container then
             for _,tool in ipairs(container:GetChildren()) do
                 if tool:IsA("Tool") and tool.Name:lower():find("mace") then
-                    mace = tool
+                    mace=tool
                     break
                 end
             end
         end
         if mace then break end
     end
-    local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if mace and hum then hum:EquipTool(mace) end
+
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    if mace and hum then
+        hum:EquipTool(mace)
+    end
 end)
 
-local autoMace = false
-toggle(combat,"Auto Mace Assist",false,function(v)
-    autoMace = v
+Toggle(Combat,"Auto Mace Assist",function(on)
+    print("Auto Mace Assist:",on,
+        "- local preference only; no automatic attacks")
 end)
 
-local pressing = false
-toggle(combat,"Pressing Timing Assist",false,function(v)
-    pressing = v
+Toggle(Combat,"Pressing Timing Assist",function(on)
+    print("Pressing Assist:",on,
+        "- timing preference only")
 end)
 
-local hitboxEnabled = false
-toggle(combat,"Owned-game Hitbox Preview",false,function(v)
-    hitboxEnabled = v
+Toggle(Combat,"Hitbox Preview (own game)",function(on)
+    print("Hitbox Preview:",on,
+        "- configure hitboxes in your own game's server")
 end)
 
-local hitSize = 4
-slider(combat,"Hitbox preview size",2,12,4,function(v)
-    hitSize = v
+-- PLAYER
+Section(PlayerPage,"PLAYER")
+
+local walkSpeed=16
+local jumpPower=50
+
+local function ApplyMovement()
+    local char=LP.Character
+    local hum=char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.WalkSpeed=walkSpeed
+        hum.UseJumpPower=true
+        hum.JumpPower=jumpPower
+    end
+end
+
+Action(PlayerPage,"WalkSpeed +",function()
+    walkSpeed=math.min(walkSpeed+2,32)
+    ApplyMovement()
 end)
 
-local info = make("TextLabel",{
+Action(PlayerPage,"WalkSpeed -",function()
+    walkSpeed=math.max(walkSpeed-2,8)
+    ApplyMovement()
+end)
+
+Action(PlayerPage,"JumpPower +",function()
+    jumpPower=math.min(jumpPower+5,100)
+    ApplyMovement()
+end)
+
+Action(PlayerPage,"JumpPower -",function()
+    jumpPower=math.max(jumpPower-5,25)
+    ApplyMovement()
+end)
+
+Action(PlayerPage,"Reset Character",function()
+    local h=LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.Health=0 end
+end)
+
+LP.CharacterAdded:Connect(function()
+    task.wait(.5)
+    ApplyMovement()
+end)
+
+-- VISUAL
+Section(Visual,"VISUAL")
+
+Toggle(Visual,"ESP (own game only)",function(on)
+    print("ESP setting:",on,
+        "- use authorized game-side visual system")
+end)
+
+local info=New("TextLabel",{
+    Size=UDim2.new(1,0,0,70),
+    BackgroundColor3=C.BG,
+    Text="PLAYER: "..LP.Name.."\nUSER ID: "..LP.UserId,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.Gotham,
+    TextSize=11,
+    TextWrapped=true
+},Visual)
+New("UICorner",{CornerRadius=UDim.new(0,7)},info)
+
+-- SETTINGS
+Section(Settings,"SETTINGS")
+
+Action(Settings,"Hide GUI",function()
+    Main.Visible=false
+    Reopen.Visible=true
+end)
+
+Action(Settings,"Reset GUI Position",function()
+    Main.Position=UDim2.new(.5,-175,.5,-220)
+end)
+
+Action(Settings,"Close Script",function()
+    GUI:Destroy()
+end)
+
+New("TextLabel",{
+    Size=UDim2.new(1,0,0,45),
+    BackgroundTransparency=1,
+    Text="PRESTIGE V9\nMobile optimized • Drag header",
+    TextColor3=C.GREY,
+    Font=Enum.Font.Gotham,
+    TextSize=10
+},Settings)
+
+-- STATS
+local fps=0
+local frames=0
+local last=os.clock()
+
+local status=New("TextLabel",{
+    Position=UDim2.new(0,12,1,-22),
+    Size=UDim2.new(1,-24,0,16),
+    BackgroundTransparency=1,
+    Text="FPS: --  |  PING: --",
+    TextColor3=C.PURPLE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left
+},Main)
+
+RunService.RenderStepped:Connect(function()
+    frames+=1
+    local now=os.clock()
+    if now-last>=1 then
+        local ping="--"
+        pcall(function()
+            ping=math.floor(
+                Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+            ).."ms"
+        end)
+        status.Text="FPS: "..frames.."  |  PING: "..ping
+        frames=0
+        last=now
+    end
+end)
+
+-- Canvas sizing
+local function UpdateCanvas(page)
+    local layout=page:FindFirstChildOfClass("UIListLayout")
+    if layout then
+        Content.CanvasSize=UDim2.fromOffset(
+            0,layout.AbsoluteContentSize.Y+15
+        )
+    end
+end
+
+for _,page in pairs(Pages) do
+    local layout=page:FindFirstChildOfClass("UIListLayout")
+    if layout then
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            if page.Visible then UpdateCanvas(page) end
+        end)
+    end
+end
+
+Show("Combat")
+print("[PRESTIGE V9] GUI loaded")
+el",{
     Size=UDim2.new(1,0,0,45),
     BackgroundTransparency=1,
     Text="Assist toggles are local indicators only.\nHitbox changes require your own game's server code.",
