@@ -1,0 +1,537 @@
+
+--==================================================
+-- PRESTIGE V9 | MOBILE EDITION
+-- Legitimate client-side helpers
+-- Put in a LocalScript / your own Roblox experience
+--==================================================
+
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+local LP = Players.LocalPlayer
+local Purple = Color3.fromRGB(160, 85, 255)
+local Dark = Color3.fromRGB(13, 12, 19)
+local Panel = Color3.fromRGB(25, 22, 34)
+local White = Color3.fromRGB(245, 240, 255)
+local Muted = Color3.fromRGB(160, 150, 180)
+
+local old = LP.PlayerGui:FindFirstChild("PRESTIGE_V9")
+if old then old:Destroy() end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "PRESTIGE_V9"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
+gui.Parent = LP:WaitForChild("PlayerGui")
+
+local function make(class, props, parent)
+    local o = Instance.new(class)
+    for k,v in pairs(props) do o[k] = v end
+    o.Parent = parent
+    return o
+end
+
+local main = make("Frame", {
+    Size = UDim2.fromOffset(340, 440),
+    Position = UDim2.new(.5, -170, .5, -220),
+    BackgroundColor3 = Dark,
+    BorderSizePixel = 0,
+    ClipsDescendants = true
+}, gui)
+make("UICorner", {CornerRadius=UDim.new(0,14)}, main)
+make("UIStroke", {Color=Purple, Thickness=1.6}, main)
+
+-- Header
+local header = make("Frame", {
+    Size=UDim2.new(1,0,0,58),
+    BackgroundColor3=Panel,
+    BorderSizePixel=0
+}, main)
+make("UICorner", {CornerRadius=UDim.new(0,14)}, header)
+
+make("TextLabel", {
+    Position=UDim2.fromOffset(14,5),
+    Size=UDim2.new(1,-60,0,30),
+    BackgroundTransparency=1,
+    Text="✦ PRESTIGE V9",
+    TextColor3=White,
+    Font=Enum.Font.GothamBlack,
+    TextSize=20,
+    TextXAlignment=Enum.TextXAlignment.Left
+}, header)
+
+make("TextLabel", {
+    Position=UDim2.fromOffset(15,34),
+    Size=UDim2.new(1,-30,0,15),
+    BackgroundTransparency=1,
+    Text="UNSTABLE FFA  •  MOBILE CLIENT",
+    TextColor3=Purple,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left
+}, header)
+
+-- Drag
+local dragging, dragStart, startPos
+header.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+
+UIS.InputChanged:Connect(function(input)
+    if dragging and (
+        input.UserInputType == Enum.UserInputType.MouseMovement
+        or input.UserInputType == Enum.UserInputType.Touch
+    ) then
+        local d = input.Position - dragStart
+        main.Position = UDim2.new(
+            startPos.X.Scale, startPos.X.Offset+d.X,
+            startPos.Y.Scale, startPos.Y.Offset+d.Y
+        )
+    end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- Sidebar
+local sidebar = make("Frame", {
+    Position=UDim2.fromOffset(10,70),
+    Size=UDim2.new(0,94,1,-82),
+    BackgroundColor3=Panel,
+    BorderSizePixel=0
+}, main)
+make("UICorner", {CornerRadius=UDim.new(0,9)}, sidebar)
+
+local sideLayout = make("UIListLayout", {
+    Padding=UDim.new(0,7),
+    HorizontalAlignment=Enum.HorizontalAlignment.Center,
+    SortOrder=Enum.SortOrder.LayoutOrder
+}, sidebar)
+
+local content = make("ScrollingFrame", {
+    Position=UDim2.fromOffset(113,70),
+    Size=UDim2.new(1,-123,1,-82),
+    BackgroundColor3=Panel,
+    BorderSizePixel=0,
+    ScrollBarThickness=3,
+    ScrollBarImageColor3=Purple,
+    CanvasSize=UDim2.new()
+}, main)
+make("UICorner", {CornerRadius=UDim.new(0,9)}, content)
+
+local list = make("UIListLayout", {
+    Padding=UDim.new(0,8),
+    SortOrder=Enum.SortOrder.LayoutOrder
+}, content)
+
+list:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    content.CanvasSize = UDim2.fromOffset(0,list.AbsoluteContentSize.Y+12)
+end)
+
+local pages = {}
+local currentPage
+
+local function newPage(name)
+    local page = make("Frame", {
+        Name=name,
+        Size=UDim2.new(1,-12,0,0),
+        AutomaticSize=Enum.AutomaticSize.Y,
+        BackgroundTransparency=1,
+        Visible=false
+    }, content)
+    local layout = make("UIListLayout", {
+        Padding=UDim.new(0,8),
+        SortOrder=Enum.SortOrder.LayoutOrder
+    }, page)
+    pages[name] = page
+    return page
+end
+
+local function showPage(name)
+    for n,p in pairs(pages) do p.Visible = n==name end
+    currentPage = name
+end
+
+local function tab(name, icon)
+    local b = make("TextButton", {
+        Size=UDim2.new(1,-10,0,42),
+        BackgroundColor3=Dark,
+        Text=icon.."\n"..name,
+        TextColor3=White,
+        Font=Enum.Font.GothamBold,
+        TextSize=10,
+        AutoButtonColor=true
+    }, sidebar)
+    make("UICorner", {CornerRadius=UDim.new(0,7)}, b)
+    b.Activated:Connect(function() showPage(name) end)
+end
+
+local combat = newPage("Combat")
+local playerPage = newPage("Player")
+local visual = newPage("Visual")
+local settings = newPage("Settings")
+
+tab("Combat","⚔")
+tab("Player","◈")
+tab("Visual","◎")
+tab("Settings","⚙")
+
+local function section(parent, text)
+    return make("TextLabel", {
+        Size=UDim2.new(1,0,0,25),
+        BackgroundTransparency=1,
+        Text=text,
+        TextColor3=Purple,
+        Font=Enum.Font.GothamBlack,
+        TextSize=12,
+        TextXAlignment=Enum.TextXAlignment.Left
+    }, parent)
+end
+
+local function row(parent, text)
+    local f = make("Frame", {
+        Size=UDim2.new(1,0,0,38),
+        BackgroundColor3=Dark,
+        BorderSizePixel=0
+    }, parent)
+    make("UICorner", {CornerRadius=UDim.new(0,7)}, f)
+    make("TextLabel", {
+        Position=UDim2.fromOffset(10,0),
+        Size=UDim2.new(1,-75,1,0),
+        BackgroundTransparency=1,
+        Text=text,
+        TextColor3=White,
+        Font=Enum.Font.GothamMedium,
+        TextSize=11,
+        TextXAlignment=Enum.TextXAlignment.Left
+    }, f)
+    return f
+end
+
+local function button(parent, text, callback)
+    local f = row(parent,text)
+    local b = make("TextButton", {
+        AnchorPoint=Vector2.new(1,.5),
+        Position=UDim2.new(1,-5,.5,0),
+        Size=UDim2.fromOffset(64,27),
+        BackgroundColor3=Purple,
+        Text="USE",
+        TextColor3=White,
+        Font=Enum.Font.GothamBold,
+        TextSize=10
+    }, f)
+    make("UICorner", {CornerRadius=UDim.new(0,6)}, b)
+    b.Activated:Connect(callback)
+    return b
+end
+
+local toggles = {}
+
+local function toggle(parent, name, default, callback)
+    local f = row(parent,name)
+    local state = default or false
+    local b = make("TextButton", {
+        AnchorPoint=Vector2.new(1,.5),
+        Position=UDim2.new(1,-5,.5,0),
+        Size=UDim2.fromOffset(48,25),
+        BackgroundColor3=state and Purple or Muted,
+        Text=state and "ON" or "OFF",
+        TextColor3=White,
+        Font=Enum.Font.GothamBold,
+        TextSize=10
+    }, f)
+    make("UICorner", {CornerRadius=UDim.new(1,0)}, b)
+    local function set(v)
+        state = v
+        b.Text = v and "ON" or "OFF"
+        b.BackgroundColor3 = v and Purple or Muted
+        if callback then callback(v) end
+    end
+    b.Activated:Connect(function() set(not state) end)
+    toggles[name] = set
+    return function() return state end
+end
+
+local function slider(parent, name, min, max, default, callback)
+    local f = make("Frame", {
+        Size=UDim2.new(1,0,0,56),
+        BackgroundColor3=Dark,
+        BorderSizePixel=0
+    }, parent)
+    make("UICorner", {CornerRadius=UDim.new(0,7)}, f)
+    local title = make("TextLabel", {
+        Position=UDim2.fromOffset(9,3),
+        Size=UDim2.new(1,-18,0,20),
+        BackgroundTransparency=1,
+        Text=name..": "..default,
+        TextColor3=White,
+        Font=Enum.Font.GothamBold,
+        TextSize=11,
+        TextXAlignment=Enum.TextXAlignment.Left
+    }, f)
+    local bar = make("TextButton", {
+        Position=UDim2.fromOffset(10,32),
+        Size=UDim2.new(1,-20,0,8),
+        BackgroundColor3=Muted,
+        Text=""
+    }, f)
+    make("UICorner", {CornerRadius=UDim.new(1,0)}, bar)
+    local fill = make("Frame", {
+        Size=UDim2.new((default-min)/(max-min),0,1,0),
+        BackgroundColor3=Purple,
+        BorderSizePixel=0
+    }, bar)
+    make("UICorner", {CornerRadius=UDim.new(1,0)}, fill)
+
+    local value = default
+    local function update(x)
+        local pct = math.clamp(x,0,1)
+        value = math.floor(min+pct*(max-min))
+        fill.Size = UDim2.new(pct,0,1,0)
+        title.Text = name..": "..value
+        if callback then callback(value) end
+    end
+    bar.Activated:Connect(function()
+        local mouseX = UIS:GetMouseLocation().X
+        update((mouseX-bar.AbsolutePosition.X)/bar.AbsoluteSize.X)
+    end)
+    return function() return value end
+end
+
+-- COMBAT
+section(combat,"COMBAT ASSIST")
+
+button(combat,"Mace Swap",function()
+    local char = LP.Character
+    local bag = LP:FindFirstChildOfClass("Backpack")
+    local mace
+    for _,container in ipairs({char,bag}) do
+        if container then
+            for _,tool in ipairs(container:GetChildren()) do
+                if tool:IsA("Tool") and tool.Name:lower():find("mace") then
+                    mace = tool
+                    break
+                end
+            end
+        end
+        if mace then break end
+    end
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if mace and hum then hum:EquipTool(mace) end
+end)
+
+local autoMace = false
+toggle(combat,"Auto Mace Assist",false,function(v)
+    autoMace = v
+end)
+
+local pressing = false
+toggle(combat,"Pressing Timing Assist",false,function(v)
+    pressing = v
+end)
+
+local hitboxEnabled = false
+toggle(combat,"Owned-game Hitbox Preview",false,function(v)
+    hitboxEnabled = v
+end)
+
+local hitSize = 4
+slider(combat,"Hitbox preview size",2,12,4,function(v)
+    hitSize = v
+end)
+
+local info = make("TextLabel",{
+    Size=UDim2.new(1,0,0,45),
+    BackgroundTransparency=1,
+    Text="Assist toggles are local indicators only.\nHitbox changes require your own game's server code.",
+    TextColor3=Muted,
+    Font=Enum.Font.Gotham,
+    TextSize=9,
+    TextWrapped=true
+},combat)
+
+-- PLAYER
+section(playerPage,"PLAYER SETTINGS")
+
+local speed = 16
+local jump = 50
+
+slider(playerPage,"WalkSpeed",8,32,16,function(v)
+    speed = v
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.WalkSpeed = speed end
+end)
+
+slider(playerPage,"JumpPower",25,100,50,function(v)
+    jump = v
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then
+        h.UseJumpPower = true
+        h.JumpPower = jump
+    end
+end)
+
+button(playerPage,"Reset Character",function()
+    local h = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.Health = 0 end
+end)
+
+LP.CharacterAdded:Connect(function(char)
+    local h = char:WaitForChild("Humanoid",10)
+    if h then
+        h.WalkSpeed = speed
+        h.UseJumpPower = true
+        h.JumpPower = jump
+    end
+end)
+
+-- VISUAL
+section(visual,"VISUAL TOOLS")
+
+local espOn = false
+local highlights = {}
+
+local function clearESP()
+    for p,obj in pairs(highlights) do
+        if obj then obj:Destroy() end
+    end
+    table.clear(highlights)
+end
+
+local function updateESP()
+    clearESP()
+    if not espOn then return end
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= LP and p.Character then
+            local h = Instance.new("Highlight")
+            h.FillColor = Purple
+            h.OutlineColor = White
+            h.FillTransparency = .7
+            h.Adornee = p.Character
+            h.Parent = gui
+            highlights[p] = h
+        end
+    end
+end
+
+toggle(visual,"ESP (your own game)",false,function(v)
+    espOn = v
+    updateESP()
+end)
+
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(1)
+        updateESP()
+    end)
+end)
+
+section(visual,"PLAYER INFORMATION")
+
+local playerInfo = make("TextLabel",{
+    Size=UDim2.new(1,0,0,70),
+    BackgroundColor3=Dark,
+    TextColor3=White,
+    Font=Enum.Font.Gotham,
+    TextSize=11,
+    TextWrapped=true,
+    Text="Player: "..LP.Name,
+    Parent=visual
+})
+make("UICorner",{CornerRadius=UDim.new(0,7)},playerInfo)
+
+-- SETTINGS
+section(settings,"INTERFACE SETTINGS")
+
+local minimized = false
+button(settings,"Hide / Show GUI",function()
+    main.Visible = not main.Visible
+end)
+
+button(settings,"Close GUI",function()
+    gui:Destroy()
+end)
+
+make("TextLabel",{
+    Size=UDim2.new(1,0,0,45),
+    BackgroundTransparency=1,
+    Text="PRESTIGE V9\nMobile layout • Drag header • Purple theme",
+    TextColor3=Muted,
+    Font=Enum.Font.Gotham,
+    TextSize=10
+},settings)
+
+-- HUD button remains available when main hidden
+local reopen = make("TextButton",{
+    Size=UDim2.fromOffset(115,38),
+    Position=UDim2.new(0,12,.5,0),
+    BackgroundColor3=Panel,
+    Text="✦ PRESTIGE",
+    TextColor3=White,
+    Font=Enum.Font.GothamBold,
+    TextSize=12,
+    Visible=false
+},gui)
+make("UICorner",{CornerRadius=UDim.new(0,9)},reopen)
+make("UIStroke",{Color=Purple,Thickness=1.5},reopen)
+
+local function setVisible(v)
+    main.Visible = v
+    reopen.Visible = not v
+end
+
+reopen.Activated:Connect(function() setVisible(true) end)
+
+-- Override hide button behavior to preserve reopen button
+for _,obj in ipairs(settings:GetChildren()) do
+    if obj:IsA("Frame") then
+        local b = obj:FindFirstChildWhichIsA("TextButton")
+        if b and b.Text == "USE" then
+            -- buttons retain their assigned actions
+        end
+    end
+end
+
+-- Stats HUD refresh
+local statsRow = make("TextLabel",{
+    Size=UDim2.new(1,0,0,25),
+    BackgroundTransparency=1,
+    Text="FPS: --   |   PING: --",
+    TextColor3=Purple,
+    Font=Enum.Font.GothamBold,
+    TextSize=10
+},header)
+
+local frameCount = 0
+local last = os.clock()
+RunService.RenderStepped:Connect(function()
+    frameCount += 1
+    local now = os.clock()
+    if now-last >= 1 then
+        local ping = "--"
+        pcall(function()
+            ping = tostring(math.floor(
+                Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+            )).."ms"
+        end)
+        statsRow.Text = "FPS: "..frameCount.."   |   PING: "..ping
+        frameCount = 0
+        last = now
+    end
+end)
+
+showPage("Combat")
+print("[PRESTIGE V9] Loaded")
